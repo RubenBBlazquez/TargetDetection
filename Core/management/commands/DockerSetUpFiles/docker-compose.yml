@@ -1,0 +1,23 @@
+version: "3.7"
+services:
+    rabbitmq3:
+        container_name: "rabbitmq"
+        image: custom-rabbitmq:3.8-management-alpine
+        environment:
+          RABBITMQ_DEFAULT_USER: ruben
+          RABBITMQ_DEFAULT_PASS: 103856
+        ports:
+            # AMQP protocol port
+            - '5672:5672'
+            # HTTP management UI
+            - '15672:15672'
+
+    mongodb:
+      container_name: "mongodb_td"
+      image: mongo:5.0
+      volumes:
+        - ..\..\..\..\volumes\data:/data/db
+        - ..\..\..\..\volumes\mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+        - ..\..\..\..\volumes\configdb:/data/configdb
+      ports:
+        - "27017:27017"
