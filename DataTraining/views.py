@@ -1,3 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
+
+def train_model_view(request):
+    return render(request, 'train_model.html')
