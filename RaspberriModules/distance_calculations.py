@@ -1,0 +1,2 @@
+class DistanceCalculations:
+    pass

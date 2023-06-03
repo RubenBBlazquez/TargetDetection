@@ -1,0 +1,66 @@
+#!/usr/bin/python3
+from pprint import pprint
+from typing import List
+import matplotlib.pyplot as plt
+import numpy as np
+import cv2
+from picamera2 import MappedArray, Picamera2, Preview
+import torch
+from torch import tensor
+import pandas as pd
+from DataClasses.ServoModule import ServoModule
+
+normalSize = (400, 500)
+
+# Model
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='/home/gerion/TargetDetection/models/yolov5s/exp4/weights/best.pt', force_reload=False) 
+#model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+cv2.startWindowThread()
+
+picam2 = Picamera2()
+config = picam2.create_preview_configuration(main={"size": normalSize}, controls={'FrameRate': 30})
+picam2.configure(config)
+picam2.start_preview(Preview.QTGL)
+picam2.start()
+
+def get_valid_predictions(predictions: pd.DataFrame) -> List[tensor]:
+    if predictions.empty:
+        return predictions
+    
+    valid_predictions = predictions.loc[
+        predictions['confidence'] >= 0.65,
+        ['xcenter', 'ycenter', 'width', 'height']
+    ]
+
+    return valid_predictions.astype(np.int32)
+
+def predict_last_images(last_actions: List[np.array]):
+    for action in last_actions[::-1]:
+        image, servo_module = action
+        results = model(image)
+        predictions = results.pandas().xywh
+        valid_predictions = get_valid_predictions(predictions)
+
+        if valid_predictions.size == 0:
+            servo_module.move()
+
+
+frames = 0
+last_actions = []
+angle = 0
+gpin_horizontal_servo = 11
+
+while True:
+    frames += 1
+    image = picam2.capture_array()
+    
+    if frames >= 15:
+        last_actions.append((image, ServoModule(gpin_horizontal_servo, angle)))
+        
+        if len(last_actions) == 5:
+            predict_last_images(last_actions)
+
+        frames = 0
+        angle += 30
+
+
