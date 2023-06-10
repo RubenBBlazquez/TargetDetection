@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Core',
     'DataTraining',
+    'Predictions'
 ]
 
 MIDDLEWARE = [
@@ -78,7 +79,7 @@ WSGI_APPLICATION = 'Core.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "djongo",
-        "NAME": "raw_data",
+        "NAME": "target_detection",
         "CLIENT": {
             "host": "localhost",
             "port": 27017,
@@ -130,3 +131,6 @@ STATICFILES_DIRS = (
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CELERY_BROKER_URL = os.getenv('RABBITMQ_URL')
+CELERY_ALWAYS_EAGER = True
