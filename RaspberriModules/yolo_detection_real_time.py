@@ -10,6 +10,7 @@ import torch
 from torch import tensor
 import pandas as pd
 from DataClasses.ServoModule import ServoMovement
+from Predictions.models import RawPredictionsData
 
 normalSize = (400, 500)
 
@@ -49,31 +50,33 @@ def predict_last_images(last_actions: List[np.array]):
 
 
 frames = 0
-last_actions = []
 angle = 0
 gpin_horizontal_servo = 13
 increment = 2.5
+servo_movements = 0
 
 while True:
     frames += 1
     image = picam2.capture_array()
     
-    if frames >= 15:
-        print('---- add one more movement ----')
-        servo = ServoMovement(gpin_horizontal_servo, angle)
-        last_actions.append((image, servo))
+    if frames < 15:
+        continue
+    
+    print('---- add one more movement ----')
+    servo = ServoMovement(gpin_horizontal_servo, angle)
+    servo_movements += 1
 
-        if len(last_actions) == 4:
-            servo.stop()
-            predict_last_images(last_actions)
-            last_actions = []
-            increment = -increment
+    RawPredictionsData(image, angle).save()
+
+    if servo_movements == 4:
+        servo.stop()
+        increment = -increment
         
-        angle += increment
+    angle += increment
 
-        if angle < 0:
-            angle = 0
+    if angle < 0:
+        angle = 0
 
-        frames = 0
+    frames = 0
 
 

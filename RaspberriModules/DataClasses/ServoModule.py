@@ -36,6 +36,7 @@ class ServoMovement:
         return (angle / 18) + 3
 
     def default_move(self):
+        print(f'---- moving servo to {self.position}----')
         self.servo.ChangeDutyCycle(self.position)
         sleep(0.5)
 
