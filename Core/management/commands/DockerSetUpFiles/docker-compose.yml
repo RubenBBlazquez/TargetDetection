@@ -14,10 +14,10 @@ services:
 
     mongodb:
       container_name: "mongodb_td"
-      image: mongo:5.0
+      image: mongo:4.4.8
       volumes:
-        - ..\..\..\..\volumes\data:/data/db
-        - ..\..\..\..\volumes\mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-        - ..\..\..\..\volumes\configdb:/data/configdb
+        - ../../../../volumes/data:/data/db
+        - ../../../../volumes/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+        - ../../../../volumes/configdb:/data/configdb
       ports:
         - "27017:27017"

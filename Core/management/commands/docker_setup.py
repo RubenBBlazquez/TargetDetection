@@ -16,8 +16,9 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, self.ctrl_c_Function)
 
         try:
+            os.system(f"docker pull rabbitmq:3.8-management-alpine")
             os.system(f"docker build -t custom-rabbitmq:3.8-management-alpine"
-                      f" Core\\management\\commands\\DockerSetUpFiles")
+                      f" Core/management/commands/DockerSetUpFiles")
             self.stdout.write("Docker Built!")
 
             mongo_user = {
@@ -31,11 +32,11 @@ class Command(BaseCommand):
                 ]
             }
 
-            with open(f'{PATH_DIR}\\..\\..\\..\\volumes\\mongo-init.js', 'w') as file:
+            with open(f'{PATH_DIR}/../../../volumes/mongo-init.js', 'w') as file:
                 file.write(f'db.createUser({json.dumps(mongo_user)});')
 
             os.system('docker compose -p target_detection -f'
-                      'Core\\management\\commands\\DockerSetUpFiles\\docker-compose.yml up -d')
+                      'Core/management/commands/DockerSetUpFiles/docker-compose.yml up -d')
             self.stdout.write("Docker Composed!")
         except Exception as ex:
             print(f'Error {ex} when try to create dockers')
