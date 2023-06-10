@@ -7,4 +7,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Core.settings')
 
 app = Celery('TargetDetection')
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
+app.autodiscover_tasks(['Predictions'], related_name='CeleryTasks')

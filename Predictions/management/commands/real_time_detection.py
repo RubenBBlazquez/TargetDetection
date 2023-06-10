@@ -1,9 +1,7 @@
-from io import StringIO
-from typing import Optional
-from django.core.management.base import BaseCommand, CommandError
-import os
+from attrs import asdict
+from django.core.management.base import BaseCommand
 from Predictions.models import RawPredictionsData
-
+import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
 from Predictions.CeleryTasks import check_prediction
@@ -32,9 +30,10 @@ class Command(BaseCommand):
             servo.stop()
 
             servo_movements += 1
+            raw_data = RawPredictionsData(image=dict({'image': image.tolist()}), servo_position=angle)
+            serialized_raw_data = pickle.dumps(raw_data)
+            check_prediction.apply_async(serialized_raw_data, ignore_result=True)
 
-            check_prediction.delay(RawPredictionsData(image=dict({'image': image.tolist()}), servo_position=angle))
-            
             if servo_movements == 4:
                 increment = -increment
                 servo_movements = 0
