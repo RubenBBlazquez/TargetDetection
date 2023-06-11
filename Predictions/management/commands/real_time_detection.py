@@ -5,6 +5,7 @@ import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
 from Predictions.CeleryTasks import check_prediction
+from datetime import datetime
 
 class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
@@ -30,9 +31,9 @@ class Command(BaseCommand):
             servo.stop()
 
             servo_movements += 1
-            raw_data = RawPredictionsData(image=dict({'image': image.tolist()}), servo_position=angle)
-            serialized_raw_data = pickle.dumps(raw_data)
-            check_prediction.apply_async(serialized_raw_data, ignore_result=True)
+            raw_data = RawPredictionsData(image=image.tolist(), servo_position=angle, date=datetime.now())
+
+            check_prediction.apply_async(raw_data, ignore_result=True)
 
             if servo_movements == 4:
                 increment = -increment

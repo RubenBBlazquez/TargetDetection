@@ -1,15 +1,19 @@
+from typing import NamedTuple
 from django.db import models
 from datetime import datetime
 from django.utils import timezone
 from djongo import models as model_mg
 from attrs import define, field
 from datetime import datetime
+import numpy as np
 
-@define(auto_attribs=True, frozen=True)
-class RawPredictionsData:
-    image: list = field()
-    servo_position: int = field(default=0)
-    date: datetime = field(default=datetime.now())
+class RawPredictionsData(NamedTuple):
+    image: list
+    servo_position: int
+    date: datetime
+
+    def __str__(self) -> str:
+        return f'image: {len(self.image)}, servo_angle: {self.servo_position}, date: {self.date}'
 
 class Predictions(models.Model):
     image = models.TextField(db_column='image')

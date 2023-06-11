@@ -38,12 +38,12 @@ class ServoMovement:
     def default_move(self):
         print(f'---- moving servo to {self.position}----')
         self.servo.ChangeDutyCycle(self.position)
-        sleep(0.5)
+        sleep(0.2)
 
 
     def move_to(self, position):
         self.servo.ChangeDutyCycle(position)
-        sleep(0.5)
+        sleep(0.2)
 
     def stop(self):
         self.servo.ChangeDutyCycle(0)

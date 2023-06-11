@@ -15,8 +15,6 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, self.ctrl_c_Function)
 
         try:
-            #os.system('python -m celery -A Core inspect registered')
-            os.system(f"python -m celery -A Core worker -l info --concurrency=4 --without-gossip "
-                     f"--pool=solo") 
+            os.system(f"python -m celery -A Core worker -l info --concurrency=1 --without-gossip --pool=solo") 
         except Exception as ex:
             print(f'Error {ex} when try to start celery')
