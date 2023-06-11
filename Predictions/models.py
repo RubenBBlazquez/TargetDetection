@@ -2,13 +2,22 @@ from typing import NamedTuple
 from django.db import models
 from datetime import datetime
 from django.utils import timezone
-from djongo import models as model_mg
 from attrs import define, field
 from datetime import datetime
 import numpy as np
+import pandas as pd
 
-class RawPredictionsData(NamedTuple):
-    image: list
+class RawData(NamedTuple):
+    image: bytes
+    servo_position: int
+    date: datetime
+
+    def __str__(self) -> str:
+        return f'image: {len(self.image)}, servo_angle: {self.servo_position}, date: {self.date}'
+
+class RawPredictionData(NamedTuple):
+    image: bytes
+    labels: bytes
     servo_position: int
     date: datetime
 

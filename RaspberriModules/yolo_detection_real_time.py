@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 from pprint import pprint
 from time import sleep
 from typing import List
@@ -10,7 +9,6 @@ import torch
 from torch import tensor
 import pandas as pd
 from DataClasses.ServoModule import ServoMovement
-from Predictions.models import RawPredictionsData
 
 normalSize = (400, 500)
 
@@ -58,16 +56,16 @@ servo_movements = 0
 while True:
     frames += 1
     image = picam2.capture_array()
-    
+    print(cv2.__version__)
     if frames < 15:
         continue
     
-    print('---- add one more movement ----')
+    print(f'---- add one more movement ---- {image.shape}  {type(image)}')
     servo = ServoMovement(gpin_horizontal_servo, angle)
     servo_movements += 1
 
-    RawPredictionsData(image, angle).save()
-
+    prediction = model(image, augment=True)
+    print(prediction)
     if servo_movements == 4:
         servo.stop()
         increment = -increment

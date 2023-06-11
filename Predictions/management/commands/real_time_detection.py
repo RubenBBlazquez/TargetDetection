@@ -1,6 +1,6 @@
 from attrs import asdict
 from django.core.management.base import BaseCommand
-from Predictions.models import RawPredictionsData
+from Predictions.models import RawData
 import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
@@ -31,8 +31,8 @@ class Command(BaseCommand):
             servo.stop()
 
             servo_movements += 1
-            raw_data = RawPredictionsData(image=image.tolist(), servo_position=angle, date=datetime.now())
-
+            raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
+            
             check_prediction.apply_async(raw_data, ignore_result=True)
 
             if servo_movements == 4:
