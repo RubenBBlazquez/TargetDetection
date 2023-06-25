@@ -1,3 +1,4 @@
+import time
 from celery import app
 from datetime import datetime
 from Predictions.models import RawPredictionData
@@ -8,6 +9,10 @@ import os
 import numpy as np
 import pandas as pd
 import cv2
+
+@app.shared_task
+def purge_celery():
+    app.control.purge()
 
 @app.shared_task
 def check_prediction(*args):
@@ -26,7 +31,6 @@ def check_prediction(*args):
     result_prediction = model.predict(image)
     predicted_labels = result_prediction.pandas().xywh[0]
     
-    logging.info(predicted_labels['confidence'])
     logging.info(predicted_labels['confidence'] > 0.60)
 
     predicted_labels = predicted_labels[predicted_labels['confidence'] > 0.60]
@@ -39,6 +43,7 @@ def check_prediction(*args):
                 launch_prediction_action.apply_async(
                     RawPredictionData(pickle.dumps(image), pickle.dumps(labels), servo_position, datetime.now()),
                     ignore_result=True,
+                    queue='YoloPredictions',
                     priority=10
                 ), 
             axis=1
@@ -57,15 +62,15 @@ def launch_prediction_action(*args):
 
     image = cv2.rectangle(
         image, 
-        (labels.xcenter, labels.ycenter), 
-        (labels.xcenter + labels.width, labels.ycenter + labels.width),
+        (int(labels.xcenter), int(labels.ycenter)), 
+        (int(labels.xcenter) + int(labels.width), int(labels.ycenter) + int(labels.width)),
         (36,255,12), 
         1
     )
 
     cv2.imshow(image)
         
-    #os.system('python -m celery -A Core purge -f')
+    os.system('python -m celery -A Core purge -f')
 
 
 
