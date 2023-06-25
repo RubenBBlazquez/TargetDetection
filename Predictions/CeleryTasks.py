@@ -1,5 +1,7 @@
 from celery import app
+import requests
 from Core.Celery.Celery import app as celeryApp
+from celery.app.control import Inspect
 from datetime import datetime
 from Predictions.models import RawPredictionData
 import logging
@@ -15,11 +17,19 @@ def purge_celery():
     """
     This task is used to clean all tasks in celery queue
     """
-    inspection = celeryApp.control.inspect()
-    tasks = inspection.reserved()
+    api_url = f'{os.getenv("RABBITMQ_URL_API")}/queues/{os.getenv("RABBITMQ_VHOST")}/YoloPredictions'
+    response = requests.get(api_url)  # Replace 'celery' with your Celery queue name
 
-    if len(tasks) > 15:
+    if response.status_code != 200:
+        return
+
+    queue_info = response.json()
+    ready_tasks = int(queue_info['messages_ready'])
+    
+    if ready_tasks > 15:
+        print('purging unnecesary tasks')
         celeryApp.control.purge()
+
 
 @app.shared_task
 def check_prediction(*args):
@@ -106,9 +116,10 @@ def launch_prediction_action(*args):
         1
     )
 
-    cv2.imshow(image)
+    cv2.imshow('prediction', image)
         
-    os.system('python -m celery -A Core purge -f')
+    celeryApp.control.purge()
+
 
 
 

@@ -36,14 +36,14 @@ class Command(BaseCommand):
             
             check_prediction.apply_async(raw_data, queue='YoloPredictions', ignore_result=True, prority=1)
 
-            if servo_movements == 4:
+            if servo_movements % 4 == 0:
                 increment = -increment
-                servo_movements = 0
                 
             angle += increment
             
             # we check if servo do all possible movements and clean unnecessary tasks
-            if angle <= 1:
-                purge_celery.apply_async(queue='YoloPredictions', ignore_result=True, prority=9)
+            if servo_movements % 8 == 0:
+                print('purging tasks')
+                purge_celery.apply_async(queue='YoloPredictions', ignore_result=True, prority=1)
 
             frames = 0
