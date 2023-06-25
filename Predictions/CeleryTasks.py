@@ -1,5 +1,5 @@
-import time
 from celery import app
+from Core.Celery.Celery import app as celeryApp
 from datetime import datetime
 from Predictions.models import RawPredictionData
 import logging
@@ -12,10 +12,32 @@ import cv2
 
 @app.shared_task
 def purge_celery():
-    app.control.purge()
+    """
+    This task is used to clean all tasks in celery queue
+    """
+    inspection = celeryApp.control.inspect()
+    tasks = inspection.reserved()
+
+    if len(tasks) > 15:
+        celeryApp.control.purge()
 
 @app.shared_task
 def check_prediction(*args):
+    """
+        This task is used to check if prediction is correct, when we receive a prediction from YoloTargetDetection.
+        If prediction is correct, we launch a task to manage the prediction and save on database.
+
+        Parameters:
+        -----------
+        *args: tuple
+            This tuple contains the following arguments:
+                - image_bytes: bytes
+                    This argument contains the image in bytes format.
+                - servo_position: int
+                    This argument contains the servo position when the image was taken.
+                - date: datetime
+                    This argument contains the date when the image was taken.
+    """
     image_bytes, servo_position, date = args
     image = pickle.loads(image_bytes)
 
@@ -51,6 +73,22 @@ def check_prediction(*args):
 
 @app.shared_task
 def launch_prediction_action(*args):
+    """
+        This task is used to launch a task to manage the prediction and save on database.
+
+        Parameters:
+        -----------
+        *args: tuple
+            This tuple contains the following arguments:
+                - image_bytes: bytes
+                    This argument contains the image in bytes format.
+                - labels_bytes: bytes
+                    This argument contains the labels from the prediction in bytes format.
+                - servo_position: int
+                    This argument contains the servo position when the image was taken.
+                - date: datetime
+                    This argument contains the date when the image was taken.
+    """
     image_bytes, labels_bytes, servo_position, date = args
     image: np.ndarray = pickle.loads(image_bytes)
     labels: pd.Series = pickle.loads(labels_bytes)
