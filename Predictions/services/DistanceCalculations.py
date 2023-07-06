@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 from typing import Tuple, List, NamedTuple
 
 import attr
@@ -8,6 +9,13 @@ import pandas as pd
 from attr import define
 
 CM_IN_PIXELS = 37.7952755906
+
+
+class CoordsSide(Enum):
+    LEFT = 0
+    RIGHT = 1
+    UP = 2
+    DOWN = 3
 
 
 class Point(NamedTuple):
@@ -38,10 +46,13 @@ class Line:
             This attribute contains the second point of the line.
         axis: int
             This attribute contains the axis of the line.
+        side: CoordsSide
+            This attribute contains the side of the line.
     """
     pt1: Point
     pt2: Point
     axis: int = attr.ib(default=0)
+    side: CoordsSide = attr.ib(default=CoordsSide.LEFT)
 
 
 @define(auto_attribs=True)
@@ -87,7 +98,7 @@ class DistanceCalculations:
 
         return cls(image, int(x0), int(y0), int(x1), int(y1))
 
-    def get_distance_in_cm(self, line: Line, axis=0) -> float:
+    def get_distance_in_cm(self, line: Line) -> float:
         """
         This method is used to calculate the distance in cm.
 
@@ -99,7 +110,7 @@ class DistanceCalculations:
             define the line to calculate the distance
         """
 
-        if axis == 0:
+        if line.axis == 0:
             return abs(line.pt2.x - line.pt1.x) / CM_IN_PIXELS
 
         return abs(line.pt2.y - line.pt1.y) / CM_IN_PIXELS
@@ -115,8 +126,46 @@ class DistanceCalculations:
         """
         return Line(
             Point(0, int(self.y0)),
-            Point(int(self.x0), int(self.y0))
+            Point(int(self.x0), int(self.y0)),
+            axis=0,
+            side=CoordsSide.LEFT
         )
+
+    def distance_to_up(self) -> Line:
+        """
+            This property is used to calculate the distance to the upper side of the image.
+
+            Returns:
+            --------
+            float
+                This method returns the distance to the left side of the image in meters.
+        """
+        return Line(
+            Point(int(self.x1), int(self.y0)),
+            Point(int(self.x1), 0),
+            axis=1,
+            side=CoordsSide.UP
+        )
+
+    def calculate_coords_text_cm(self, line: Line) -> Tuple[int, int]:
+        """
+        This method is used to calculate the coordinates of the text in cm.
+
+        Parameters
+        ----------
+        line: Line
+            This parameter contains the line to calculate the coordinates of the text in cm.
+        """
+        if line.axis == 0:
+            if line.side == CoordsSide.LEFT:
+                return line.pt2.x // 2, abs(line.pt2.y - 10)
+
+            return line.pt1.x // 2, abs(line.pt1.y - 10)
+
+        if line.side == CoordsSide.UP:
+            return abs(line.pt1.x - 10), line.pt1.y // 2
+
+        return abs(line.pt1.x - 10), line.pt1.y // 2
 
     def draw_lines_into_image(self, lines: List[Line]) -> None:
         """
@@ -141,7 +190,7 @@ class DistanceCalculations:
             cv2.putText(
                 self.image,
                 f'{round(self.get_distance_in_cm(line), 3)} cm',
-                (line.pt2.x // 2, line.pt2.y - 10),
+                self.calculate_coords_text_cm(line),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=0.5,
                 color=(255, 0, 0),

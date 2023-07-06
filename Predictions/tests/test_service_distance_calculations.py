@@ -18,7 +18,8 @@ def test_calculate_left_distance():
     })
     distance_calculations = DistanceCalculations.create_from(image, labels)
     line_to_left = distance_calculations.distance_to_left()
-    distance_calculations.draw_lines_into_image([line_to_left])
-    logging.error(f"distance_calculations.distance_to_left: {line_to_left}")
+    line_to_up = distance_calculations.distance_to_up()
+    distance_calculations.draw_lines_into_image([line_to_left, line_to_up])
+    logging.error(f"distance_calculations.distance_to_left: {line_to_up}")
 
     assert False
