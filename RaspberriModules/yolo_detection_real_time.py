@@ -56,16 +56,15 @@ servo_movements = 0
 while True:
     frames += 1
     image = picam2.capture_array()
-    print(cv2.__version__)
+
     if frames < 15:
         continue
     
     print(f'---- add one more movement ---- {image.shape}  {type(image)}')
     servo = ServoMovement(gpin_horizontal_servo, angle)
     servo_movements += 1
-
     prediction = model(image, augment=True)
-    print(prediction)
+
     if servo_movements == 4:
         servo.stop()
         increment = -increment

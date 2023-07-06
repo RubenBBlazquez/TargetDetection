@@ -2,7 +2,7 @@ from celery import app
 import requests
 from Core.Celery.Celery import app as celeryApp
 from datetime import datetime
-from Predictions.models import RawPredictionData
+from Predictions.models import RawPredictionData, Predictions, CleanPredictionData
 import logging
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
 import pickle
@@ -102,7 +102,7 @@ def launch_prediction_action(*args):
                     This argument contains the date when the image was taken.
     """
     image_bytes, labels_bytes, servo_position, date = args
-    image: np.ndarray = pickle.loads(image_bytes)
+    original_image: np.ndarray = pickle.loads(image_bytes)
     labels: pd.Series = pickle.loads(labels_bytes)
 
     if datetime.now().day != date.day:
@@ -112,13 +112,21 @@ def launch_prediction_action(*args):
         return
 
     image = cv2.rectangle(
-        image,
-        (int(labels.xcenter), int(labels.ycenter)),
-        (int(labels.xcenter) + int(labels.width), int(labels.ycenter) + int(labels.width)),
+        original_image,
+        ((int(labels.xcenter) - int(labels.width)) // 2, (int(labels.ycenter) - int(labels.width)) // 2),
+        ((int(labels.xcenter) + int(labels.width)) // 2, (int(labels.ycenter) + int(labels.width)) // 2),
         (36, 255, 12),
-        1
+        2
     )
 
     cv2.imshow('prediction', image)
+    cv2.waitKey(3000)
+    cv2.destroyAllWindows()
+
+    Predictions.create_from(
+        CleanPredictionData(
+            original_image.tostring(), labels.to_string(), image.tostring(), servo_position
+        )
+    ).save()
 
     celeryApp.control.purge()

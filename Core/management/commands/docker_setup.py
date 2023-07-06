@@ -3,6 +3,7 @@ import time
 from django.core.management.base import BaseCommand
 import os
 import signal
+from Core.settings import directory_separator as slash
 PATH_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
 
 
@@ -18,7 +19,7 @@ class Command(BaseCommand):
         try:
             os.system(f"docker pull rabbitmq:3.8-management-alpine")
             os.system(f"docker build -t custom-rabbitmq:3.8-management-alpine"
-                      f" Core/management/commands/DockerSetUpFiles")
+                      f" Core{slash}management{slash}commands{slash}DockerSetUpFiles")
             self.stdout.write("Docker Built!")
 
             mongo_user = {
@@ -32,11 +33,11 @@ class Command(BaseCommand):
                 ]
             }
 
-            with open(f'{PATH_DIR}/../../../volumes/mongo-init.js', 'w') as file:
+            with open(f'{PATH_DIR}{slash}..{slash}..{slash}..{slash}volumes{slash}mongo-init.js', 'w') as file:
                 file.write(f'db.createUser({json.dumps(mongo_user)});')
 
             os.system('docker compose -p target_detection -f'
-                      'Core/management/commands/DockerSetUpFiles/docker-compose.yml up -d')
+                      f'Core{slash}management{slash}commands{slash}DockerSetUpFiles{slash}docker-compose.yml up -d')
             self.stdout.write("Docker Composed!")
         except Exception as ex:
             print(f'Error {ex} when try to create dockers')
