@@ -1,4 +1,3 @@
-import logging
 from enum import Enum
 from typing import Tuple, List, NamedTuple
 
@@ -185,21 +184,20 @@ class DistanceCalculations:
         )
 
         for line in lines:
-            logging.error(f"line: {({line.pt2.x // 2}, {line.pt2.y - 10})}")
             cv2.line(self.image, line.pt1, line.pt2, (255, 0, 0), 1)
             cv2.putText(
                 self.image,
                 f'{round(self.get_distance_in_cm(line), 3)} cm',
                 self.calculate_coords_text_cm(line),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=0.5,
-                color=(255, 0, 0),
-                thickness=1,
-                lineType=cv2.LINE_AA
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                1,
+                cv2.LINE_AA
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(3000)
+        cv2.waitKey(2000)
         cv2.destroyAllWindows()
 
         return self.image

@@ -1,5 +1,3 @@
-import logging
-import os
 import pickle
 import unittest.mock as mock
 from datetime import datetime
