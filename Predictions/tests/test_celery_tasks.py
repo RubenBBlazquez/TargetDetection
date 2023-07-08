@@ -1,3 +1,4 @@
+import logging
 import pickle
 import unittest.mock as mock
 from datetime import datetime
@@ -9,6 +10,8 @@ import pandas as pd
 
 from Predictions.CeleryTasks import launch_prediction_action
 import cv2
+
+from Predictions.models import Predictions
 
 
 @freeze_time("2020-01-01 12:00:00")
@@ -27,3 +30,9 @@ def test_launch_prediction_action(celery_app_mock):
     })
 
     launch_prediction_action(pickle.dumps(image), pickle.dumps(labels), 0, datetime.now())
+
+    predictions = Predictions.objects.get(id=1)
+
+    logging.error(predictions)
+    assert False
+

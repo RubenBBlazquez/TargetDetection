@@ -50,10 +50,10 @@ mark_different_images = pytest.mark.parametrize(
 @mark_different_images
 def test_calculate_left_distance(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    line_to_left = distance_calculations.distance_to_left()
+    line_to_left = distance_calculations.line_to_left_side
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_left)
-    expected_cm = int((labels.xcenter - labels.width) / 2) / CM_IN_PIXELS
+    expected_cm = abs(round(int(labels.xcenter - labels.width / 2) / CM_IN_PIXELS, 3))
 
     assert result_cm == expected_cm
 
@@ -61,10 +61,10 @@ def test_calculate_left_distance(test_image, labels):
 @mark_different_images
 def test_calculate_upper_distance(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    line_to_up = distance_calculations.distance_to_up()
+    line_to_up = distance_calculations.line_to_upper_side
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_up)
-    expected_cm = int((labels.ycenter - labels.height) / 2) / CM_IN_PIXELS
+    expected_cm = abs(round(int(labels.ycenter - labels.height / 2) / CM_IN_PIXELS, 3))
 
     assert result_cm == expected_cm
 
@@ -72,11 +72,11 @@ def test_calculate_upper_distance(test_image, labels):
 @mark_different_images
 def test_calculate_right_distance(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    line_to_right = distance_calculations.distance_to_right()
+    line_to_right = distance_calculations.line_to_right_side
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_right)
-    x1 = (labels.xcenter + labels.width) / 2
-    expected_cm = int(test_image.shape[1] - x1) / CM_IN_PIXELS
+    x1 = labels.xcenter + labels.width / 2
+    expected_cm = abs(round(int(test_image.shape[1] - x1) / CM_IN_PIXELS, 3))
 
     assert result_cm == expected_cm
 
@@ -84,11 +84,11 @@ def test_calculate_right_distance(test_image, labels):
 @mark_different_images
 def test_calculate_bottom_distance(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    line_to_bottom = distance_calculations.distance_to_bottom()
+    line_to_bottom = distance_calculations.line_to_bottom_side
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_bottom)
-    y1 = (labels.ycenter + labels.height) / 2
-    expected_cm = int(test_image.shape[0] - y1) / CM_IN_PIXELS
+    y1 = labels.ycenter + labels.height / 2
+    expected_cm = abs(round(int(test_image.shape[0] - y1) / CM_IN_PIXELS, 3))
 
     assert result_cm == expected_cm
 
@@ -97,8 +97,8 @@ def test_calculate_bottom_distance(test_image, labels):
 @unittest.mock.patch('Predictions.services.DistanceCalculations.cv2')
 def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    line_to_up = distance_calculations.distance_to_up()
-    line_to_left = distance_calculations.distance_to_left()
+    line_to_up = distance_calculations.line_to_upper_side
+    line_to_left = distance_calculations.line_to_left_side
     lines = [line_to_up, line_to_left]
 
     distance_calculations.draw_lines_into_image(lines)
@@ -116,8 +116,8 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     font = cv2_mock.FONT_HERSHEY_SIMPLEX
     line_type = cv2_mock.LINE_AA
     expected_put_text_calls = [
-        call(test_image, f'{round(distance_line_up, 3)} cm', coords_line_up, font, 0.5, (255, 0, 0), 1, line_type),
-        call(test_image, f'{round(distance_line_left, 3)} cm', coords_line_left, font, 0.5, (255, 0, 0), 1, line_type),
+        call(test_image, f'{distance_line_up} cm', coords_line_up, font, 0.5, (255, 0, 0), 1, line_type),
+        call(test_image, f'{distance_line_left} cm', coords_line_left, font, 0.5, (255, 0, 0), 1, line_type),
     ]
     result_cv2_put_text_method_call_args_list = cv2_mock.putText.call_args_list
 
@@ -128,16 +128,10 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
 @mark_different_images
 def test_draw_lines_showing_images(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-
-    line_bottom = distance_calculations.distance_to_bottom()
-    line_right = distance_calculations.distance_to_right()
-    line_left = distance_calculations.distance_to_left()
-    line_up = distance_calculations.distance_to_up()
-    lines = [line_bottom, line_right, line_left, line_up]
-
-    distance_calculations.draw_lines_into_image(lines)
+    distance_calculations.draw_lines_into_image()
 
 
+@pytest.mark.skip(reason='This test is only for manual testing')
 def test_with_real_image():
     predictions = pd.read_csv('Predictions/tests/assets/predictions.csv')
 

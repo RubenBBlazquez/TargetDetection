@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from attr import define
 
+from Predictions.models import Predictions
+
 CM_IN_PIXELS = 37.7952755906
 
 
@@ -91,10 +93,10 @@ class DistanceCalculations:
             labels: pd.Series
                 This parameter contains the labels.
         """
-        x0 = (labels.xcenter - labels.width) / 2
-        y0 = (labels.ycenter - labels.height) / 2
-        x1 = (labels.xcenter + labels.width) / 2
-        y1 = (labels.ycenter + labels.height) / 2
+        x0 = labels.xcenter - labels.width / 2
+        y0 = labels.ycenter - labels.height / 2
+        x1 = labels.xcenter + labels.width / 2
+        y1 = labels.ycenter + labels.height / 2
 
         return cls(image, int(x0), int(y0), int(x1), int(y1))
 
@@ -109,57 +111,10 @@ class DistanceCalculations:
         line: Line
             define the line to calculate the distance
         """
-
         if line.axis == 0:
-            return abs(line.pt2.x - line.pt1.x) / CM_IN_PIXELS
+            return round(abs(line.pt2.x - line.pt1.x) / CM_IN_PIXELS, 3)
 
-        return abs(line.pt2.y - line.pt1.y) / CM_IN_PIXELS
-
-    def distance_to_left(self) -> Line:
-        """
-            This method is used to calculate the distance to the left side of the image.
-
-        """
-        return Line(
-            Point(0, int(self.y0)),
-            Point(int(self.x0), int(self.y0)),
-            axis=0,
-            side=CoordsSide.LEFT
-        )
-
-    def distance_to_up(self) -> Line:
-        """
-            This method is used to calculate the distance to the upper side of the image.
-        """
-        return Line(
-            Point(int(self.x1), int(self.y0)),
-            Point(int(self.x1), 0),
-            axis=1,
-            side=CoordsSide.UP
-        )
-
-    def distance_to_right(self) -> Line:
-        """
-            This method is used to calculate the distance to the right side of the image.
-        """
-
-        return Line(
-            Point(int(self.x1), int(self.x1)),
-            Point(int(self.image.shape[1]), int(self.x1)),
-            axis=0,
-            side=CoordsSide.RIGHT
-        )
-
-    def distance_to_bottom(self) -> Line:
-        """
-            This method is used to calculate the distance to the bottom side of the image.
-        """
-        return Line(
-            Point(int(self.x1), int(self.y1)),
-            Point(int(self.x1), int(self.image.shape[0])),
-            axis=1,
-            side=CoordsSide.BOTTOM
-        )
+        return round(abs(line.pt2.y - line.pt1.y) / CM_IN_PIXELS, 3)
 
     def calculate_coords_text_cm(self, line: Line) -> Tuple[int, int]:
         """
@@ -179,9 +134,70 @@ class DistanceCalculations:
         if line.side == CoordsSide.UP:
             return abs(line.pt1.x - 10), line.pt1.y // 2
 
-        return abs(int(line.pt2.x - (line.pt2.x*0.6))), int(line.pt1.y * 1.2)
+        return abs(int(line.pt2.x - (line.pt2.x * 0.6))), int(line.pt1.y * 1.2)
 
-    def draw_lines_into_image(self, lines: List[Line]) -> None:
+    @property
+    def line_to_left_side(self) -> Line:
+        """
+            This method is used to calculate the distance to the left side of the image.
+
+        """
+        return Line(
+            Point(0, int(self.y0)),
+            Point(int(self.x0), int(self.y0)),
+            axis=0,
+            side=CoordsSide.LEFT
+        )
+
+    @property
+    def line_to_upper_side(self) -> Line:
+        """
+            This method is used to calculate the distance to the upper side of the image.
+        """
+        return Line(
+            Point(int(self.x1), int(self.y0)),
+            Point(int(self.x1), 0),
+            axis=1,
+            side=CoordsSide.UP
+        )
+
+    @property
+    def line_to_right_side(self) -> Line:
+        """
+            This method is used to calculate the distance to the right side of the image.
+        """
+
+        return Line(
+            Point(int(self.x1), int(self.x1)),
+            Point(int(self.image.shape[1]), int(self.x1)),
+            axis=0,
+            side=CoordsSide.RIGHT
+        )
+
+    @property
+    def line_to_bottom_side(self) -> Line:
+        """
+            This method is used to calculate the distance to the bottom side of the image.
+        """
+        return Line(
+            Point(int(self.x1), int(self.y1)),
+            Point(int(self.x1), int(self.image.shape[0])),
+            axis=1,
+            side=CoordsSide.BOTTOM
+        )
+
+    def get_all_lines(self) -> List[Line]:
+        """
+            This method is used to get all lines.
+        """
+        return [
+            self.line_to_left_side,
+            self.line_to_upper_side,
+            self.line_to_right_side,
+            self.line_to_bottom_side
+        ]
+
+    def draw_lines_into_image(self, lines: List[Line] = None) -> None:
         """
         This method is used to draw lines into the image.
 
@@ -190,6 +206,10 @@ class DistanceCalculations:
         lines: List[Line]
             This parameter contains the lines to be drawn into the image.
         """
+
+        if lines is None:
+            lines = self.get_all_lines()
+
         cv2.rectangle(
             self.image,
             (self.x0, self.y0),
@@ -202,7 +222,7 @@ class DistanceCalculations:
             cv2.line(self.image, line.pt1, line.pt2, (255, 0, 0), 1)
             cv2.putText(
                 self.image,
-                f'{round(self.get_distance_in_cm(line), 3)} cm',
+                f'{self.get_distance_in_cm(line)} cm',
                 self.calculate_coords_text_cm(line),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -212,7 +232,7 @@ class DistanceCalculations:
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(3000)
+        cv2.waitKey(2000)
         cv2.destroyAllWindows()
 
         return self.image

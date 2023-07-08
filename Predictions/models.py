@@ -1,8 +1,8 @@
+from __future__ import annotations
 from typing import NamedTuple
 
 from attr import define
 from django.db import models
-from django.utils import timezone
 from datetime import datetime
 
 
@@ -34,21 +34,27 @@ class CleanPredictionData:
 
 
 class Predictions(models.Model):
-    original_image = models.TextField(db_column='image')
-    predicted_image = models.TextField(db_column='predicted_image')
-    labels = models.TextField(db_column='predicted_labels')
-    servo_position = models.TextField(db_column='servo_position')
+    original_image = models.TextField(db_column='image', default='')
+    predicted_image = models.TextField(db_column='predicted_image', default='')
+    labels = models.TextField(db_column='predicted_labels', default='')
+    servo_position = models.IntegerField(db_column='servo_position', default=0)
     checked = models.BooleanField(db_column='checked', default=False)
-    date = models.DateTimeField(db_column='date', default=timezone.now)
+    date = models.DateTimeField(db_column='date', default=datetime.now())
 
     @classmethod
-    def create_from(cls, data: CleanPredictionData):
+    def create_from(cls, data: CleanPredictionData) -> Predictions:
         return cls(
             original_image=data.original_image,
             predicted_image=data.predicted_image,
             labels=data.labels,
             servo_position=data.servo_position
         )
+
+    def __str__(self):
+        return f'original_image: {self.original_image}, ' \
+               f'predicted_image: {self.predicted_image},' \
+               f' labels: {self.labels}, servo_position: {self.servo_position},' \
+               f' checked: {self.checked}, date: {self.date}'
 
     class Meta:
         db_table = 'Predictions'

@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import cv2
 
+from Predictions.services.DistanceCalculations import DistanceCalculations
+
 
 @app.shared_task
 def purge_celery():
@@ -115,17 +117,8 @@ def launch_prediction_action(*args):
         return
 
     image = original_image.copy()
-    cv2.rectangle(
-        image,
-        (int(labels['xcenter']) - int(labels['width']) // 2, int(labels['ycenter']) - int(labels['height']) // 2),
-        (int(labels['xcenter']) + int(labels['width']) // 2, int(labels['ycenter']) + int(labels['height']) // 2),
-        (36, 255, 12),
-        2
-    )
-
-    cv2.imshow('prediction', image)
-    cv2.waitKey(3000)
-    cv2.destroyAllWindows()
+    distance_calculations = DistanceCalculations.create_from(image, labels)
+    distance_calculations.draw_lines_into_image()
 
     Predictions.create_from(
         CleanPredictionData(
