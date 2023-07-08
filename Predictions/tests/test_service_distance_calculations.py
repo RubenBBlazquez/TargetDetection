@@ -1,3 +1,4 @@
+import json
 import logging
 import unittest.mock
 from unittest.mock import MagicMock, call
@@ -135,3 +136,22 @@ def test_draw_lines_showing_images(test_image, labels):
     lines = [line_bottom, line_right, line_left, line_up]
 
     distance_calculations.draw_lines_into_image(lines)
+
+
+def test_with_real_image():
+    predictions = pd.read_csv('Predictions/tests/assets/predictions.csv')
+
+    for index, row in predictions.iterrows():
+        image = np.array(json.loads(row['original_image']))
+        converted_image = cv2.convertScaleAbs(image)
+        labels = eval(json.loads(row['labels']))
+        # x = (int(labels['xcenter']) - int(labels['width']) // 2, int(labels['ycenter']) - int(labels['height']) // 2)
+        # y = (int(labels['xcenter']) + int(labels['width']) // 2, int(labels['ycenter']) + int(labels['height']) // 2)
+        # cv2.rectangle(converted_image, x, y, (255, 0, 0), 3)
+        # cv2.imshow('image', converted_image)
+
+        cv2.waitKey(3000)
+
+        logging.error(f'Image: {labels}')
+
+    assert False

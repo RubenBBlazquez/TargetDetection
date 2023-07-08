@@ -1,3 +1,5 @@
+import json
+
 from celery import app
 import requests
 from Core.Celery.Celery import app as celeryApp
@@ -107,14 +109,16 @@ def launch_prediction_action(*args):
 
     if datetime.now().day != date.day:
         logging.info(
-            f'TASK (launch_prediction_action) REJECTED: DATE DAY ({date.day}) ARGUMENT IS DIFFERENT FROM ACTUAL DATE ({datetime.now().day})')
+            f'TASK (launch_prediction_action) REJECTED: DATE DAY ({date.day}) ARGUMENT '
+            f'IS DIFFERENT FROM ACTUAL DATE ({datetime.now().day})')
 
         return
 
-    image = cv2.rectangle(
-        original_image,
-        ((int(labels.xcenter) - int(labels.width)) // 2, (int(labels.ycenter) - int(labels.width)) // 2),
-        ((int(labels.xcenter) + int(labels.width)) // 2, (int(labels.ycenter) + int(labels.width)) // 2),
+    image = original_image.copy()
+    cv2.rectangle(
+        image,
+        (int(labels['xcenter']) - int(labels['width']) // 2, int(labels['ycenter']) - int(labels['height']) // 2),
+        (int(labels['xcenter']) + int(labels['width']) // 2, int(labels['ycenter']) + int(labels['height']) // 2),
         (36, 255, 12),
         2
     )
@@ -125,7 +129,10 @@ def launch_prediction_action(*args):
 
     Predictions.create_from(
         CleanPredictionData(
-            original_image.tostring(), labels.to_string(), image.tostring(), servo_position
+            json.dumps(original_image.tolist()),
+            json.dumps(labels.to_dict()),
+            json.dumps(image.tolist()),
+            servo_position
         )
     ).save()
 
