@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from typing import Tuple, List, NamedTuple
 
@@ -90,10 +91,10 @@ class DistanceCalculations:
             labels: pd.Series
                 This parameter contains the labels.
         """
-        x0 = labels.xcenter - labels.width / 2
-        y0 = labels.ycenter - labels.height / 2
-        x1 = labels.xcenter + labels.width / 2
-        y1 = labels.ycenter + labels.height / 2
+        x0 = (labels.xcenter - labels.width) / 2
+        y0 = (labels.ycenter - labels.height) / 2
+        x1 = (labels.xcenter + labels.width) / 2
+        y1 = (labels.ycenter + labels.height) / 2
 
         return cls(image, int(x0), int(y0), int(x1), int(y1))
 
@@ -144,6 +145,23 @@ class DistanceCalculations:
             Point(int(self.x1), 0),
             axis=1,
             side=CoordsSide.UP
+        )
+
+    def distance_to_right(self) -> Line:
+        """
+            This property is used to calculate the distance to the upper side of the image.
+
+            Returns:
+            --------
+            float
+                This method returns the distance to the left side of the image in meters.
+        """
+
+        return Line(
+            Point(int(self.x1), int(self.x1)),
+            Point(int(self.image.shape[1]), int(self.x1)),
+            axis=0,
+            side=CoordsSide.RIGHT
         )
 
     def calculate_coords_text_cm(self, line: Line) -> Tuple[int, int]:
@@ -197,7 +215,7 @@ class DistanceCalculations:
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(2000)
+        cv2.waitKey(3000)
         cv2.destroyAllWindows()
 
         return self.image

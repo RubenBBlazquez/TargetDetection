@@ -52,7 +52,7 @@ def test_calculate_left_distance(test_image, labels):
     line_to_left = distance_calculations.distance_to_left()
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_left)
-    expected_cm = int(labels.xcenter - labels.width / 2) / CM_IN_PIXELS
+    expected_cm = int((labels.xcenter - labels.width) / 2) / CM_IN_PIXELS
 
     assert result_cm == expected_cm
 
@@ -63,7 +63,19 @@ def test_calculate_upper_distance(test_image, labels):
     line_to_up = distance_calculations.distance_to_up()
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_up)
-    expected_cm = int(labels.ycenter - labels.height / 2) / CM_IN_PIXELS
+    expected_cm = int((labels.ycenter - labels.height) / 2) / CM_IN_PIXELS
+
+    assert result_cm == expected_cm
+
+
+@mark_different_images
+def test_calculate_right_distance(test_image, labels):
+    distance_calculations = DistanceCalculations.create_from(test_image, labels)
+    line_to_right = distance_calculations.distance_to_right()
+
+    result_cm = distance_calculations.get_distance_in_cm(line_to_right)
+    x1 = (labels.xcenter + labels.width) / 2
+    expected_cm = int(test_image.shape[1] - x1) / CM_IN_PIXELS
 
     assert result_cm == expected_cm
 
