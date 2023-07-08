@@ -81,6 +81,18 @@ def test_calculate_right_distance(test_image, labels):
 
 
 @mark_different_images
+def test_calculate_bottom_distance(test_image, labels):
+    distance_calculations = DistanceCalculations.create_from(test_image, labels)
+    line_to_bottom = distance_calculations.distance_to_bottom()
+
+    result_cm = distance_calculations.get_distance_in_cm(line_to_bottom)
+    y1 = (labels.ycenter + labels.height) / 2
+    expected_cm = int(test_image.shape[0] - y1) / CM_IN_PIXELS
+
+    assert result_cm == expected_cm
+
+
+@mark_different_images
 @unittest.mock.patch('Predictions.services.DistanceCalculations.cv2')
 def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
@@ -110,3 +122,16 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
 
     assert list(result_cv2_line_method_call_args_list) == expected_line_calls
     assert list(result_cv2_put_text_method_call_args_list) == expected_put_text_calls
+
+
+@mark_different_images
+def test_draw_lines_showing_images(test_image, labels):
+    distance_calculations = DistanceCalculations.create_from(test_image, labels)
+
+    line_bottom = distance_calculations.distance_to_bottom()
+    line_right = distance_calculations.distance_to_right()
+    line_left = distance_calculations.distance_to_left()
+    line_up = distance_calculations.distance_to_up()
+    lines = [line_bottom, line_right, line_left, line_up]
+
+    distance_calculations.draw_lines_into_image(lines)

@@ -15,7 +15,7 @@ class CoordsSide(Enum):
     LEFT = 0
     RIGHT = 1
     UP = 2
-    DOWN = 3
+    BOTTOM = 3
 
 
 class Point(NamedTuple):
@@ -117,12 +117,8 @@ class DistanceCalculations:
 
     def distance_to_left(self) -> Line:
         """
-            This property is used to calculate the distance to the left side of the image.
+            This method is used to calculate the distance to the left side of the image.
 
-            Returns:
-            --------
-            float
-                This method returns the distance to the left side of the image in meters.
         """
         return Line(
             Point(0, int(self.y0)),
@@ -133,12 +129,7 @@ class DistanceCalculations:
 
     def distance_to_up(self) -> Line:
         """
-            This property is used to calculate the distance to the upper side of the image.
-
-            Returns:
-            --------
-            float
-                This method returns the distance to the left side of the image in meters.
+            This method is used to calculate the distance to the upper side of the image.
         """
         return Line(
             Point(int(self.x1), int(self.y0)),
@@ -149,12 +140,7 @@ class DistanceCalculations:
 
     def distance_to_right(self) -> Line:
         """
-            This property is used to calculate the distance to the upper side of the image.
-
-            Returns:
-            --------
-            float
-                This method returns the distance to the left side of the image in meters.
+            This method is used to calculate the distance to the right side of the image.
         """
 
         return Line(
@@ -162,6 +148,17 @@ class DistanceCalculations:
             Point(int(self.image.shape[1]), int(self.x1)),
             axis=0,
             side=CoordsSide.RIGHT
+        )
+
+    def distance_to_bottom(self) -> Line:
+        """
+            This method is used to calculate the distance to the bottom side of the image.
+        """
+        return Line(
+            Point(int(self.x1), int(self.y1)),
+            Point(int(self.x1), int(self.image.shape[0])),
+            axis=1,
+            side=CoordsSide.BOTTOM
         )
 
     def calculate_coords_text_cm(self, line: Line) -> Tuple[int, int]:
@@ -177,12 +174,12 @@ class DistanceCalculations:
             if line.side == CoordsSide.LEFT:
                 return line.pt2.x // 2, abs(line.pt2.y - 10)
 
-            return line.pt1.x // 2, abs(line.pt1.y - 10)
+            return abs(int(line.pt1.x * 1.1)), abs(line.pt1.y - 10)
 
         if line.side == CoordsSide.UP:
             return abs(line.pt1.x - 10), line.pt1.y // 2
 
-        return abs(line.pt1.x - 10), line.pt1.y // 2
+        return abs(int(line.pt2.x - (line.pt2.x*0.6))), int(line.pt1.y * 1.2)
 
     def draw_lines_into_image(self, lines: List[Line]) -> None:
         """

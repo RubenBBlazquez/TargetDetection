@@ -14,3 +14,4 @@ freezegun==1.2.2
 pandas==2.0.3
 numpy==1.25.0
 matplotlib==3.7.1
+# picamera2==0.3.10 # for raspberry pi
