@@ -4,7 +4,8 @@ from django.core.management.base import BaseCommand
 import os
 import signal
 from Core.settings import directory_separator as slash
-PATH_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
+
+PATH_DIR = os.path.dirname(os.path.abspath(__file__))  # This is your Project Root
 
 
 class Command(BaseCommand):

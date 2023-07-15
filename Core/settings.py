@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'Core',
-    'DataTraining',
+    'BackEndApps.DataTraining',
     'BackEndApps.Predictions'
 ]
 
@@ -89,7 +89,7 @@ DATABASES = {
             "port": 27017,
             "username": "ruben",
             "password": "103856",
-            "authSource": "admin",
+            "authSource": "test",
         },
     }
 }

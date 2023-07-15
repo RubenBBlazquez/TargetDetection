@@ -1,24 +1,26 @@
-import {BrowserRouter, Routes, Route, Link} from 'react-router-dom';
-import Home from "./Home/Home";
+import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import Predictions from "./Predictions/Predictions";
-import {Nav} from 'react-bootstrap';
+import SideBar from "./Components/SideBar";
 
 function App() {
-        return (
-            <div>
-                <BrowserRouter>
-                    <nav>
-                        <Link to="/">Home</Link>
-                        <Link to="/predictions">Predictions</Link>
-                    </nav>
-                    <Routes>
-                        <Route path="/" element={<Home/>}/>
-                        <Route path="/predictions" element={<Predictions/>}/>
-                    </Routes>
-                </BrowserRouter>
-            </div>
+    return (
+        <div>
+            <BrowserRouter>
+                <div className={'d-flex'}>
+                    <SideBar/>
 
-        );
+                    <div className={'w-100'}>
+                        <Routes>
+                            <Route path="/predictions" element={<Predictions/>}/>
+                            <Route path="/training" element={<Predictions/>}/>
+                        </Routes>
+                    </div>
+
+                </div>
+            </BrowserRouter>
+        </div>
+
+    );
 }
 
 export default App;

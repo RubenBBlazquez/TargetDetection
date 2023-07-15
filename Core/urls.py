@@ -16,9 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from BackEndApps.DataTraining import urlpatterns as data_training_urls
+from BackEndApps.DataTraining.views import train_model_view
 
 urlpatterns = [
     path('/', admin.site.urls),
-    *data_training_urls
+    path('train/', train_model_view, name="trainCVModel")
 ]

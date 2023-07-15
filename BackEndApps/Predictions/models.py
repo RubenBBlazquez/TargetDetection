@@ -19,6 +19,7 @@ class RawData(NamedTuple):
 class RawPredictionData(NamedTuple):
     image: bytes
     labels: bytes
+    prediction_id: int
     servo_position: int
     date: datetime
 
@@ -33,9 +34,26 @@ class CleanPredictionData:
     predicted_image: str
     predicted_distances: str
     servo_position: int
+    prediction_id: int
 
 
-class Predictions(models.Model):
+class AllPredictions(models.Model):
+    """
+        This class is used to save all the predictions, even if the prediction is good or bad.
+    """
+    image = models.TextField(db_column='image', default='')
+    prediction = models.BooleanField(db_column='prediction', default=False)
+    confidence = models.FloatField(db_column='confidence', default=0.0)
+
+    class Meta:
+        db_table = 'AllPredictions'
+
+
+class GoodPredictions(models.Model):
+    """
+        This class is used to save the predictions in which we have calculated the distances,
+        and we have shot to the target.
+    """
     original_image = models.TextField(db_column='image', default='')
     predicted_image = models.TextField(db_column='predicted_image', default='')
     labels = models.TextField(db_column='predicted_labels', default='')
@@ -43,9 +61,10 @@ class Predictions(models.Model):
     servo_position = models.IntegerField(db_column='servo_position', default=0)
     checked = models.BooleanField(db_column='checked', default=False)
     date = models.DateTimeField(db_column='date', default=datetime.now())
+    prediction_id = models.IntegerField(db_column='prediction_id', default=0)
 
     @classmethod
-    def create_from(cls, data: CleanPredictionData) -> Predictions:
+    def create_from(cls, data: CleanPredictionData) -> GoodPredictions:
         return cls(
             original_image=data.original_image,
             predicted_image=data.predicted_image,
@@ -60,4 +79,4 @@ class Predictions(models.Model):
                f' checked: {self.checked}, date: {self.date}'
 
     class Meta:
-        db_table = 'Predictions'
+        db_table = 'GoodPredictions'

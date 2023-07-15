@@ -10,7 +10,7 @@ import pandas as pd
 from BackEndApps.Predictions.CeleryTasks import launch_prediction_action
 import cv2
 
-from BackEndApps.Predictions.models import Predictions
+from BackEndApps.Predictions.models import GoodPredictions
 
 
 @freeze_time("2020-01-01 12:00:00")
@@ -30,5 +30,5 @@ def test_launch_prediction_action(celery_app_mock):
 
     launch_prediction_action(pickle.dumps(image), pickle.dumps(labels), 0, datetime.now())
 
-    prediction = Predictions.objects.get(id=1)
+    prediction = GoodPredictions.objects.get(id=1)
 

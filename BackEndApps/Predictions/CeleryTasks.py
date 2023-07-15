@@ -4,7 +4,7 @@ from celery import app
 import requests
 from Core.Celery.Celery import app as celeryApp
 from datetime import datetime
-from BackEndApps.Predictions.models import RawPredictionData, Predictions, CleanPredictionData
+from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions
 import logging
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
 import pickle
@@ -64,19 +64,30 @@ def check_prediction(*args):
 
     model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
     result_prediction = model.predict(image)
-    predicted_labels = result_prediction.pandas().xywh[0]
+    labels = result_prediction.pandas().xywh[0]
 
-    logging.info(predicted_labels['confidence'] > 0.60)
-
-    predicted_labels = predicted_labels[predicted_labels['confidence'] > 0.60]
-
+    predicted_labels = labels[labels['confidence'] > 0.60]
     logging.info(f'Predicted Labels: \n {predicted_labels}')
+
+    prediction_object = AllPredictions(
+        image=json.dumps(image.tolist()),
+        prediction=len(predicted_labels) > 0,
+        confidence=predicted_labels['confidence'].mean()
+    )
+    prediction_object.save()
+    prediction_id = prediction_object.id
 
     if not predicted_labels.empty:
         predicted_labels.apply(
-            lambda labels:
+            lambda p_labels:
             launch_prediction_action.apply_async(
-                RawPredictionData(pickle.dumps(image), pickle.dumps(labels), servo_position, datetime.now()),
+                RawPredictionData(
+                    pickle.dumps(image),
+                    pickle.dumps(p_labels),
+                    prediction_id,
+                    servo_position,
+                    datetime.now()
+                ),
                 ignore_result=True,
                 queue='YoloPredictions',
                 priority=10
@@ -103,7 +114,7 @@ def launch_prediction_action(*args):
                 - date: datetime
                     This argument contains the date when the image was taken.
     """
-    image_bytes, labels_bytes, servo_position, date = args
+    image_bytes, labels_bytes, prediction_id, servo_position, date = args
     original_image: np.ndarray = pickle.loads(image_bytes)
     labels: pd.Series = pickle.loads(labels_bytes)
 
@@ -118,13 +129,14 @@ def launch_prediction_action(*args):
     distance_calculations = DistanceCalculations.create_from(image, labels)
     distance_calculations.draw_lines_into_image()
 
-    Predictions.create_from(
+    GoodPredictions.create_from(
         CleanPredictionData(
             json.dumps(original_image.tolist()),
             json.dumps(labels.to_dict()),
             json.dumps(image.tolist()),
             json.dumps(distance_calculations.get_all_distances()),
-            servo_position
+            servo_position,
+            prediction_id
         )
     ).save()
 
