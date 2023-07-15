@@ -197,6 +197,16 @@ class DistanceCalculations:
             self.line_to_bottom_side
         ]
 
+    def get_all_distances(self) -> pd.Series:
+        """
+            This method is used to get all distances.
+        """
+        return pd.Series(
+            [self.get_distance_in_cm(line) for line in self.get_all_lines()],
+            index=['left', 'top', 'right', 'bottom']
+        )
+
+
     def draw_lines_into_image(self, lines: List[Line] = None) -> None:
         """
         This method is used to draw lines into the image.

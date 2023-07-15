@@ -11,8 +11,6 @@ import pickle
 import os
 import numpy as np
 import pandas as pd
-import cv2
-
 from Predictions.services.DistanceCalculations import DistanceCalculations
 
 
@@ -125,8 +123,34 @@ def launch_prediction_action(*args):
             json.dumps(original_image.tolist()),
             json.dumps(labels.to_dict()),
             json.dumps(image.tolist()),
+            json.dumps(distance_calculations.get_all_distances()),
             servo_position
         )
     ).save()
 
     celeryApp.control.purge()
+
+
+@app.shared_task
+def calculate_shoot_position(*args):
+    """
+        This task is used to calculate the shot position (move servo to the correct position to shoot the target).
+
+        Parameters:
+        -----------
+        *args: tuple
+            This tuple contains the following arguments:
+                - distances: bytes
+                    This argument contains the distances to all sides of the target
+    """
+    distances = args[0]
+    distances = pickle.loads(distances)
+    tmp_file = 'RasperriModules/assets/shoot_in_progress.tmp'
+    # we create a tmp file to indicate that we are calculating the shoot position
+    # and the real time prediction must be stopped
+    open(tmp_file, 'w').close()
+
+    # we calculate the shoot position
+    shoot_position = distances.get_shoot_position()
+
+    os.remove(tmp_file)

@@ -163,3 +163,4 @@ volumes/*
 .idea/
 prueba*.py
 node_modules/
+RaspberriModules/assets/shoot_in_process.tmp

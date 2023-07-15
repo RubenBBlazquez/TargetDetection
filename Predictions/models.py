@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import NamedTuple
 
+import attr
 from attr import define
 from django.db import models
 from datetime import datetime
@@ -30,6 +31,7 @@ class CleanPredictionData:
     original_image: str
     labels: str
     predicted_image: str
+    predicted_distances: str
     servo_position: int
 
 
@@ -37,6 +39,7 @@ class Predictions(models.Model):
     original_image = models.TextField(db_column='image', default='')
     predicted_image = models.TextField(db_column='predicted_image', default='')
     labels = models.TextField(db_column='predicted_labels', default='')
+    predicted_distances: models.TextField(db_column='predicted_distances', default='')
     servo_position = models.IntegerField(db_column='servo_position', default=0)
     checked = models.BooleanField(db_column='checked', default=False)
     date = models.DateTimeField(db_column='date', default=datetime.now())

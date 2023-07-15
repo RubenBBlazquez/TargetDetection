@@ -31,8 +31,5 @@ def test_launch_prediction_action(celery_app_mock):
 
     launch_prediction_action(pickle.dumps(image), pickle.dumps(labels), 0, datetime.now())
 
-    predictions = Predictions.objects.get(id=1)
-
-    logging.error(predictions)
-    assert False
+    prediction = Predictions.objects.get(id=1)
 

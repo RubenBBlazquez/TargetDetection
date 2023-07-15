@@ -1,4 +1,6 @@
 import logging
+import os
+
 from attrs import asdict
 from django.core.management.base import BaseCommand
 from Predictions.models import RawData
@@ -24,8 +26,9 @@ class Command(BaseCommand):
         while True:
             frames += 1
             image = self.picamera.capture_array()
-            
-            if frames < 15:
+            is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
+
+            if frames < 15 or is_shoot_in_progress:
                 continue
             
             servo = ServoMovement(gpin_horizontal_servo, angle if angle > 1 else 1)
