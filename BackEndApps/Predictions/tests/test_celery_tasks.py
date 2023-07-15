@@ -1,4 +1,3 @@
-import logging
 import pickle
 import unittest.mock as mock
 from datetime import datetime
@@ -8,10 +7,10 @@ from freezegun import freeze_time
 import numpy as np
 import pandas as pd
 
-from Predictions.CeleryTasks import launch_prediction_action
+from BackEndApps.Predictions.CeleryTasks import launch_prediction_action
 import cv2
 
-from Predictions.models import Predictions
+from BackEndApps.Predictions.models import Predictions
 
 
 @freeze_time("2020-01-01 12:00:00")

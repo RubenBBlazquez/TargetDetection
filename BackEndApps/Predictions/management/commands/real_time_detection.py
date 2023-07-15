@@ -1,13 +1,11 @@
-import logging
 import os
 
-from attrs import asdict
 from django.core.management.base import BaseCommand
-from Predictions.models import RawData
+from BackEndApps.Predictions.models import RawData
 import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
-from Predictions.CeleryTasks import check_prediction, purge_celery
+from BackEndApps.Predictions.CeleryTasks import check_prediction, purge_celery
 from datetime import datetime
 
 class Command(BaseCommand):

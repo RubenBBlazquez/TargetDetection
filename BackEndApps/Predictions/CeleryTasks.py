@@ -4,14 +4,14 @@ from celery import app
 import requests
 from Core.Celery.Celery import app as celeryApp
 from datetime import datetime
-from Predictions.models import RawPredictionData, Predictions, CleanPredictionData
+from BackEndApps.Predictions.models import RawPredictionData, Predictions, CleanPredictionData
 import logging
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
 import pickle
 import os
 import numpy as np
 import pandas as pd
-from Predictions.services.DistanceCalculations import DistanceCalculations
+from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
 
 
 @app.shared_task

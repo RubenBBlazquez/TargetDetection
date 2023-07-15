@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from _pytest.fixtures import SubRequest
 
-from Predictions.services.DistanceCalculations import DistanceCalculations, CM_IN_PIXELS
+from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations, CM_IN_PIXELS
 
 
 @pytest.fixture(scope='function')

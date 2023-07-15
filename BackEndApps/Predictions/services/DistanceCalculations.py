@@ -1,4 +1,3 @@
-import logging
 from enum import Enum
 from typing import Tuple, List, NamedTuple
 
@@ -7,8 +6,6 @@ import cv2
 import numpy as np
 import pandas as pd
 from attr import define
-
-from Predictions.models import Predictions
 
 CM_IN_PIXELS = 37.7952755906
 

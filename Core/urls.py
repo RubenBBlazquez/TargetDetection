@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from DataTraining.urls import urlpatterns as data_training_urls
+from BackEndApps.DataTraining import urlpatterns as data_training_urls
 
 urlpatterns = [
     path('/', admin.site.urls),
