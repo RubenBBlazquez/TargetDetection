@@ -11,8 +11,6 @@ function Predictions() {
     const [misfireBarChart, setMisfireBarChart] = React.useState(true);
     const [shootsErrorBarChart, setShootsErrorBarChart] = React.useState(true);
 
-    console.log(linearChartByPD, misfireBarChart, shootsErrorBarChart)
-
     return (
         <div className={'d-flex justify-content-center flex-column'}>
             <Container className={'mt-3 ms-1 row d-flex align-items-center justify-content-center'} fluid>

@@ -58,12 +58,25 @@ const data = [
 ];
 
 export default class PredictionsByDateChart extends React.PureComponent {
+    constructor(props) {
+        super(props);
+
+        this.manageBarClick.bind(this);
+    }
+    manageBarClick = (data) => {
+        console.log(data)
+    }
+
+    manageLineClick = (event, data) => {
+        console.log(data)
+    }
+
     render() {
         const {useLineChart} = this.props;
         console.log(useLineChart)
         if (useLineChart) {
             return (
-                <ResponsiveContainer  width='100%' height={300}>
+                <ResponsiveContainer width='100%' height={300}>
                     <LineChart
                         width={500}
                         height={300}
@@ -81,8 +94,8 @@ export default class PredictionsByDateChart extends React.PureComponent {
                         <Tooltip/>
                         <Legend
                         />
-                        <Line type="monotone" dataKey="pred_0" stroke="#8884d8" activeDot={{r: 8}}/>
-                        <Line type="monotone" dataKey="pred_1" stroke="#82ca9d"/>
+                        <Line type="monotone" dataKey="pred_0" stroke="#8884d8" activeDot={{onClick: this.manageLineClick}}/>
+                        <Line type="monotone" dataKey="pred_1" stroke="#82ca9d" activeDot={{onClick: this.manageLineClick}}/>
                     </LineChart>
                 </ResponsiveContainer>
             );
@@ -106,8 +119,8 @@ export default class PredictionsByDateChart extends React.PureComponent {
                     <YAxis/>
                     <Tooltip/>
                     <Legend/>
-                    <Bar dataKey="pred_0" fill="#8884d8"/>
-                    <Bar dataKey="pred_1" fill="#82ca9d"/>
+                    <Bar onClick={this.manageBarClick} dataKey="pred_0" fill="#8884d8"/>
+                    <Bar onClick={this.manageBarClick} dataKey="pred_1" fill="#82ca9d"/>
                 </BarChart>
             </ResponsiveContainer>
         );
