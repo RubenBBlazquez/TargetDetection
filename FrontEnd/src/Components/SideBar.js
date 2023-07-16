@@ -22,7 +22,7 @@ const Sidebar = () => {
 
                 <CDBSidebarContent className="sidebar-content">
                     <CDBSidebarMenu>
-                        <NavLink exact to="/predictions" activeClassName="activeClicked">
+                        <NavLink exact='true' to="/predictions">
                             <CDBSidebarMenuItem>
                                 <div className={'d-flex'}>
                                     <div className={'me-sm-3'}>
@@ -33,7 +33,7 @@ const Sidebar = () => {
                                 <hr/>
                             </CDBSidebarMenuItem>
                         </NavLink>
-                        <NavLink exact to="/training" activeClassName="activeClicked">
+                        <NavLink exact='true' to="/training">
                             <CDBSidebarMenuItem>
                                 <div className={'d-flex'}>
                                     <div className={'me-sm-3'}>
