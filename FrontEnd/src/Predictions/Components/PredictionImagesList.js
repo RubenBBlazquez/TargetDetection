@@ -125,7 +125,7 @@ export default class PredictionImagesList extends React.PureComponent {
         return (
             <>
                 <CustomModal {...this.getSelectedImageModalInfo()}/>
-                <Container className={'border rounded mt-3 w-100 p-2 d-flex justify-content-center position-relative'}
+                <Container className={'border rounded mt-3 w-100 h-50 p-2 d-flex justify-content-center position-relative'}
                            fluid>
                     <Container className={'overflow-x-auto d-flex w-100'} fluid>
                         {
@@ -133,10 +133,10 @@ export default class PredictionImagesList extends React.PureComponent {
                                 image = image['original_image'];
 
                                 return (
-                                    <Card key={`imagePrediction-${index}`} className={'col-1 m-1'}
+                                    <Card key={`imagePrediction-${index}`} className={'col-2 m-1'}
                                           onClick={() => this.setState({selectedImage: index, show: true})}>
                                         <img className={'w-100 h-100 img-fluid img-responsive rounded border'}
-                                             alt={image} src={image}/>
+                                             alt={image} src={image} title={`Prediction: ${index}`}/>
                                     </Card>
                                 )
                             })
