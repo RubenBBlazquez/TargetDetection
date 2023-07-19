@@ -11,6 +11,8 @@ import {
     LineChart,
     Line
 } from 'recharts';
+import PredictionsByDateChart from "./PredictionsByDateChart";
+import {Container, Form} from "react-bootstrap";
 
 const data = [
     {
@@ -65,11 +67,54 @@ const data = [
 ];
 
 export default class MisfireOfLastPredictionsChart extends PureComponent {
+    constructor(props) {
+        super(props);
+        this.state = {
+            useBarChart: true
+        }
+    }
+
+    /**
+     * Set the chart to use bar chart or line chart
+     *
+     * @param {boolean} setBarChart
+     */
+    setBarChart = (setBarChart) => {
+        this.setState({
+            useBarChart: setBarChart
+        })
+    }
+
     render() {
-        const {useBarChart} = this.props;
+        const {useBarChart} = this.state;
+
+        let chart = (
+            <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                    width={500}
+                    height={300}
+                    data={data}
+                    margin={{
+                        top: 5,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                    }}
+                >
+                    <CartesianGrid strokeDasharray="3 3"/>
+                    <XAxis dataKey="name"/>
+                    <YAxis/>
+                    <Tooltip/>
+                    <Legend/>
+                    <Bar dataKey="first" fill="#CD5C5C"/>
+                    <Bar dataKey="second" fill="#008080"/>
+                    <Bar dataKey="third" fill="#F5B041"/>
+                </BarChart>
+            </ResponsiveContainer>
+        );
 
         if (!useBarChart) {
-            return (
+            chart = (
                 <ResponsiveContainer width='100%' height={300}>
                     <LineChart
                         width={500}
@@ -97,28 +142,34 @@ export default class MisfireOfLastPredictionsChart extends PureComponent {
         }
 
         return (
-            <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                    width={500}
-                    height={300}
-                    data={data}
-                    margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                    }}
-                >
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="name"/>
-                    <YAxis/>
-                    <Tooltip/>
-                    <Legend/>
-                    <Bar dataKey="first" fill="#CD5C5C"/>
-                    <Bar dataKey="second" fill="#008080"/>
-                    <Bar dataKey="third" fill="#F5B041"/>
-                </BarChart>
-            </ResponsiveContainer>
-        );
+            <Container className={'col-lg-4 col-xs-12 mt-lg-0 mt-sm-3 border rounded'}>
+                <div className={'d-flex flex-column align-items-center'}>
+                    <h4 className={'text-center'}>Shoots Error of last predictions</h4>
+                    <div className={'w-100 p-2'}>
+                        <Form.Check
+                            type="switch"
+                            label="Change to Linear Chart"
+                            id="set-linear-chart-shoots-error"
+                            className={`float-end ${!useBarChart && 'd-none'}`}
+                            checked={false}
+                            onChange={() => {
+                                this.setBarChart(false);
+                            }}
+                        />
+                        <Form.Check
+                            type="switch"
+                            label="Change to Bar Chart"
+                            id="set-bar-chart-shoots-error"
+                            className={`float-end ${useBarChart && 'd-none'}`}
+                            checked={true}
+                            onChange={() => {
+                                this.setBarChart(true);
+                            }}
+                        />
+                    </div>
+                </div>
+                {chart}
+            </Container>
+        )
     }
 }

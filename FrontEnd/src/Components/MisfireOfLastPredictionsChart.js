@@ -11,6 +11,7 @@ import {
     LineChart,
     Line
 } from 'recharts';
+import {Container, Form} from "react-bootstrap";
 
 const data = [
     {
@@ -58,11 +59,47 @@ const data = [
 ];
 
 export default class MisfireOfLastPredictionsChart extends PureComponent {
+    constructor(props) {
+        super(props);
+        this.state = {
+            useBarChart: true
+        }
+
+        this.setMisfireBarChart = this.setMisfireBarChart.bind(this);
+    }
+
+    setMisfireBarChart = (useBarChart) => {
+        this.setState({useBarChart});
+    }
+
     render() {
-        const {useBarChart} = this.props;
+        const {useBarChart} = this.state;
+        let chart = (
+            <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                    width={500}
+                    height={300}
+                    data={data}
+                    margin={{
+                        top: 5,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                    }}
+                >
+                    <CartesianGrid strokeDasharray="3 3"/>
+                    <XAxis dataKey="name"/>
+                    <YAxis/>
+                    <Tooltip/>
+                    <Legend/>
+                    <Bar dataKey="success" fill="#82ca9d"/>
+                    <Bar dataKey="fail" fill="red"/>
+                </BarChart>
+            </ResponsiveContainer>
+        );
 
         if (!useBarChart) {
-            return (
+            chart =  (
                 <ResponsiveContainer width='100%' height={330}>
                     <LineChart
                         width={500}
@@ -89,27 +126,36 @@ export default class MisfireOfLastPredictionsChart extends PureComponent {
         }
 
         return (
-            <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                    width={500}
-                    height={300}
-                    data={data}
-                    margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                    }}
-                >
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="name"/>
-                    <YAxis/>
-                    <Tooltip/>
-                    <Legend/>
-                    <Bar dataKey="success" fill="#82ca9d"/>
-                    <Bar dataKey="fail" fill="red"/>
-                </BarChart>
-            </ResponsiveContainer>
-        );
+            <Container className={'col-lg-4 col-xs-12 mt-lg-0 mt-sm-3 border rounded'}>
+                <div className={'d-flex flex-column align-items-center'}>
+                    <h4 className={'text-center'}>Misfire of last predictions</h4>
+                    <div className={'w-100 p-2'}>
+                        <Form.Check
+                            type="switch"
+                            label="Change to Linear Chart"
+                            id="set-linear-chart-misfires"
+                            className={`float-end ${!useBarChart && 'd-none'}`}
+                            checked={false}
+                            onChange={() => {
+                                this.setMisfireBarChart(false);
+                            }}
+                        />
+                        <Form.Check
+                            type="switch"
+                            label="Change to Bar Chart"
+                            id="set-bar-chart-misfires"
+                            className={`float-end ${useBarChart && 'd-none'}`}
+                            checked={true}
+                            onChange={() => {
+                                this.setMisfireBarChart(true);
+                            }}
+                        />
+                    </div>
+                </div>
+                {
+                    chart
+                }
+            </Container>
+        )
     }
 }
