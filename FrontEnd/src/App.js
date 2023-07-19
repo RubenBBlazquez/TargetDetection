@@ -1,6 +1,6 @@
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import Predictions from "./Predictions/Predictions";
-import SideBar from "./Components/SideBar";
+import SideBar from "./CommonComponents/SideBar";
 
 function App() {
     return (

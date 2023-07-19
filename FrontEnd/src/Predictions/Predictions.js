@@ -1,11 +1,11 @@
 import React from "react";
 import {Card, Container} from "react-bootstrap";
-import PredictionsByDateChart from "../Components/PredictionsByDateChart";
-import MisfireOfLastPredictionsChart from "../Components/MisfireOfLastPredictionsChart";
-import ShootsErrorOfLastPredictionsChart from "../Components/ShootsErrorOfLastPredictionsChart";
-import TotalPredictionsPercentages from "../Components/TotalPredictionsPercentages";
-import PredictionImagesList from "../Components/PredictionImagesList";
-import Filters from "../Components/Filters";
+import PredictionsByDateChart from "./Components/PredictionsByDateChart";
+import MisfireOfLastPredictionsChart from "./Components/MisfireOfLastPredictionsChart";
+import ShootsErrorOfLastPredictionsChart from "./Components/ShootsErrorOfLastPredictionsChart";
+import TotalPredictionsPercentages from "./Components/TotalPredictionsPercentages";
+import PredictionImagesList from "./Components/PredictionImagesList";
+import Filters from "../CommonComponents/Filters";
 
 function Predictions() {
     return (

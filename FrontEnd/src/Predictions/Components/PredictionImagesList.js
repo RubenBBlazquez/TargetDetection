@@ -1,7 +1,7 @@
 import React from "react";
 import {Card, Container} from "react-bootstrap";
-import {GET_PREDICTION_IMAGES_MODES} from "../Utils/UtilsPredictions";
-import CustomModal from "./modal";
+import {GET_PREDICTION_IMAGES_MODES} from "../../Utils/UtilsPredictions";
+import CustomModal from "../../CommonComponents/modal";
 
 export default class PredictionImagesList extends React.PureComponent {
     constructor(props) {
