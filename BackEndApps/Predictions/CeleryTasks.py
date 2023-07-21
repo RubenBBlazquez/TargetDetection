@@ -84,7 +84,7 @@ def check_prediction(*args):
                 RawPredictionData(
                     pickle.dumps(image),
                     pickle.dumps(p_labels),
-                    prediction_id,
+                    str(prediction_id),
                     servo_position,
                     datetime.now()
                 ),
