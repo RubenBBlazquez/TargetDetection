@@ -75,7 +75,7 @@ def check_prediction(*args):
         confidence=predicted_labels['confidence'].mean()
     )
     prediction_object.save()
-    prediction_id = prediction_object.id
+    prediction_id = prediction_object.prediction_id
 
     if not predicted_labels.empty:
         predicted_labels.apply(
@@ -131,7 +131,6 @@ def launch_prediction_action(*args):
 
     GoodPredictions.create_from(
         CleanPredictionData(
-            json.dumps(original_image.tolist()),
             json.dumps(labels.to_dict()),
             json.dumps(image.tolist()),
             json.dumps(distance_calculations.get_all_distances().to_dict()),

@@ -28,7 +28,6 @@ class RawPredictionData(NamedTuple):
 
 @define(auto_attribs=True)
 class CleanPredictionData:
-    original_image: str
     labels: str
     predicted_image: str
     predicted_distances: str
@@ -40,7 +39,7 @@ class AllPredictions(models.Model):
     """
         This class is used to save all the predictions, even if the prediction is good or bad.
     """
-    id = models.AutoField(primary_key=True)
+    prediction_id = models.AutoField(primary_key=True)
     image = models.TextField(db_column='image', default='')
     prediction = models.BooleanField(db_column='prediction', default=False)
     confidence = models.FloatField(db_column='confidence', default=0.0)
@@ -54,8 +53,6 @@ class GoodPredictions(models.Model):
         This class is used to save the predictions in which we have calculated the distances,
         and we have shot to the target.
     """
-    id = models.AutoField(primary_key=True)
-    original_image = models.TextField(db_column='image', default='')
     predicted_image = models.TextField(db_column='predicted_image', default='')
     labels = models.TextField(db_column='predicted_labels', default='')
     predicted_distances: models.TextField(db_column='predicted_distances', default='')
@@ -67,7 +64,6 @@ class GoodPredictions(models.Model):
     @classmethod
     def create_from(cls, data: CleanPredictionData) -> GoodPredictions:
         return cls(
-            original_image=data.original_image,
             predicted_image=data.predicted_image,
             labels=data.labels,
             servo_position=data.servo_position
