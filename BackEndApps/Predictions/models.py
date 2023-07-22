@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import NamedTuple
 
-import attr
 from attr import define
 from django.db import models
 from datetime import datetime
@@ -19,7 +18,7 @@ class RawData(NamedTuple):
 class RawPredictionData(NamedTuple):
     image: bytes
     labels: bytes
-    prediction_id: int
+    prediction_id: str
     servo_position: int
     date: datetime
 
@@ -41,6 +40,7 @@ class AllPredictions(models.Model):
     """
         This class is used to save all the predictions, even if the prediction is good or bad.
     """
+    id = models.AutoField(primary_key=True)
     image = models.TextField(db_column='image', default='')
     prediction = models.BooleanField(db_column='prediction', default=False)
     confidence = models.FloatField(db_column='confidence', default=0.0)
@@ -54,6 +54,7 @@ class GoodPredictions(models.Model):
         This class is used to save the predictions in which we have calculated the distances,
         and we have shot to the target.
     """
+    id = models.AutoField(primary_key=True)
     original_image = models.TextField(db_column='image', default='')
     predicted_image = models.TextField(db_column='predicted_image', default='')
     labels = models.TextField(db_column='predicted_labels', default='')
