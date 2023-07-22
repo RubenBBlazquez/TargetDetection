@@ -17,8 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from BackEndApps.DataTraining.views import train_model_view
+from BackEndApps.Predictions.views import AllPredictionsView
 
 urlpatterns = [
     path('/', admin.site.urls),
-    path('train/', train_model_view, name="trainCVModel")
+    path('train/', train_model_view, name="trainCVModel"),
+    path('get_all_predictions/', AllPredictionsView.as_view(), name="get_all_predictions")
 ]

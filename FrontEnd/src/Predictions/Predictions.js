@@ -7,12 +7,14 @@ import TotalPredictionsPercentages from "./Components/TotalPredictionsPercentage
 import PredictionImagesList from "./Components/PredictionImagesList";
 import Filters from "../CommonComponents/Filters";
 import Alert from 'react-bootstrap/Alert';
+import {getPredictions} from "./methods";
 
 function Predictions() {
+    const predictionsData = getPredictions();
+
     return (
         <div className={'d-flex justify-content-center flex-column border'}>
-            <Container className={'mt-3 ms-1 row d-flex align-items-center justify-content-center'}
-                       style={{height: '40vh'}} fluid>
+            <Container className={'mt-3 ms-1 row d-flex align-items-center justify-content-center'} fluid>
                 <Container className={'d-flex justify-content-end'}>
                     <Alert key={'info'} variant={'warning'} className={'w-50'}>
                         All charts are interactive. You can click on the legend to hide/show the data and interact with

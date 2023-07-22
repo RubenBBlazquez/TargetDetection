@@ -134,7 +134,7 @@ def launch_prediction_action(*args):
             json.dumps(original_image.tolist()),
             json.dumps(labels.to_dict()),
             json.dumps(image.tolist()),
-            json.dumps(distance_calculations.get_all_distances()),
+            json.dumps(distance_calculations.get_all_distances().to_dict()),
             servo_position,
             prediction_id
         )
