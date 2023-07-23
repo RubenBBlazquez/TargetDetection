@@ -12,6 +12,7 @@ Once you have the pieces, you have to buy the next components:
 * **1 Raspberry Pi**
 * **1 Raspberry Pi Camera**
 
+the next steps, i give you to your imagination
 
 ## Installation
 
