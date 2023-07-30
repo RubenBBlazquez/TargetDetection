@@ -23,7 +23,7 @@ mark_different_images = pytest.mark.parametrize(
     'test_image, labels',
     [
         (
-            'Predictions/tests/assets/target_image.jpg',
+            'BackEndApps/Predictions/tests/assets/target_image.jpg',
             pd.Series({
                 'confidence': 0.99,
                 'height': 100,
@@ -33,7 +33,7 @@ mark_different_images = pytest.mark.parametrize(
             })
         ),
         (
-            'Predictions/tests/assets/target_image_2.jpg',
+            'BackEndApps/Predictions/tests/assets/target_image_2.jpg',
             pd.Series({
                 'confidence': 0.99,
                 'height': 100,
@@ -94,7 +94,7 @@ def test_calculate_bottom_distance(test_image, labels):
 
 
 @mark_different_images
-@unittest.mock.patch('Predictions.services.DistanceCalculations.cv2')
+@unittest.mock.patch('BackEndApps.Predictions.services.DistanceCalculations.cv2')
 def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
     line_to_up = distance_calculations.line_to_upper_side

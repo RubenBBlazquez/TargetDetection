@@ -65,14 +65,13 @@ def check_prediction(*args):
     model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
     result_prediction = model.predict(image)
     labels = result_prediction.pandas().xywh[0]
-
     predicted_labels = labels[labels['confidence'] > 0.60]
     logging.info(f'Predicted Labels: \n {predicted_labels}')
 
     prediction_object = AllPredictions(
         image=json.dumps(image.tolist()),
-        prediction=len(predicted_labels) > 0,
-        confidence=predicted_labels['confidence'].mean()
+        prediction=int(len(predicted_labels) > 0),
+        confidence=float(predicted_labels['confidence'].mean())
     )
     prediction_object.save()
     prediction_id = prediction_object.prediction_id

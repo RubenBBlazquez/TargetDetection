@@ -41,7 +41,7 @@ class AllPredictions(models.Model):
     """
     prediction_id = models.AutoField(primary_key=True)
     image = models.TextField(db_column='image', default='')
-    prediction = models.BooleanField(db_column='prediction', default=False)
+    prediction = models.IntegerField(db_column='prediction', default=0)
     confidence = models.FloatField(db_column='confidence', default=0.0)
 
     class Meta:
