@@ -22,7 +22,7 @@ class YoloTargetDetection(DetectionMethods):
         return self.model(image)
 
     def train(self, yolo_file_data, epochs, batch_size):
-        models_path = os.path.abspath(os.getcwd()) + '{slash}models{slash}'
+        models_path = os.path.abspath(os.getcwd()) + f'{slash}models{slash}'
         os.system(f'yolov5 train --img 640 --batch {batch_size} --epochs {epochs} --data {yolo_file_data}'
                   f' --weights {models_path}yolov5s.pt --save-period 1 --project {models_path}yolov5s')
 

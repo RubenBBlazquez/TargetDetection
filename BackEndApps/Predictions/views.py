@@ -17,7 +17,7 @@ class AllPredictionsView(APIView):
         all_predictions = AllPredictions.objects.all()[offset:offset + limit]
         all_predictions_serialized = serializers.serialize('json', all_predictions)
 
-        print(AllPredictions.objects.all().values('id'))
+        print(AllPredictions.objects.all().values('prediction_id'))
 
         def map_predictions(prediction):
             return {

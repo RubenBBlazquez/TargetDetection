@@ -1,3 +1,4 @@
+import React from "react";
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import Predictions from "./Predictions/Predictions";
 import SideBar from "./CommonComponents/SideBar";
