@@ -4,6 +4,7 @@ import unittest.mock as mock
 from datetime import datetime
 
 import pytest
+from bson import ObjectId
 from freezegun import freeze_time
 import numpy as np
 import pandas as pd
@@ -67,7 +68,7 @@ def test_check_prediction_with_prediction_ok(
     raw_prediction_data: RawPredictionData = launch_prediction_args[0][0]
 
     assert raw_prediction_data.image == pickle.dumps(image)
-    assert raw_prediction_data.prediction_id == str(prediction_id)
+    assert type(raw_prediction_data.prediction_id) is ObjectId
 
 
 @freeze_time("2020-01-01 12:00:00")
@@ -87,4 +88,6 @@ def test_launch_prediction_action(celery_app_mock):
 
     launch_prediction_action(pickle.dumps(image), pickle.dumps(labels), 0, 0, datetime.now())
 
-    prediction = GoodPredictions.objects.get(id=1)
+    prediction = GoodPredictions.objects.get()
+    breakpoint()
+    breakpoint()

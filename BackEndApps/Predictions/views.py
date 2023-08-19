@@ -1,7 +1,6 @@
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from django.core import serializers
-
 from .models import AllPredictions
 
 
@@ -17,11 +16,11 @@ class AllPredictionsView(APIView):
         all_predictions = AllPredictions.objects.all()[offset:offset + limit]
         all_predictions_serialized = serializers.serialize('json', all_predictions)
 
-        print(AllPredictions.objects.all().values('prediction_id'))
+        print(AllPredictions.objects.all().values('_id'))
 
         def map_predictions(prediction):
             return {
-                'pk': prediction.pk,
+                '_id': prediction.pk,
                 'image': prediction['fields']['image'],
                 'prediction': prediction['fields']['prediction'],
                 'confidence': prediction['fields']['confidence']
