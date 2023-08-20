@@ -15,6 +15,6 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, self.ctrl_c_Function)
 
         try:
-            os.system(f"python -m celery -A Core worker -Q YoloPredictions -l info --concurrency=1 --without-gossip --pool=solo") 
+            os.system(f"python -m celery -A Core worker -l info --concurrency=1 --without-gossip --pool=solo")
         except Exception as ex:
             print(f'Error {ex} when try to start celery')

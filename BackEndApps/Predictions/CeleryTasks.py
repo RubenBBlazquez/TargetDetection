@@ -36,8 +36,9 @@ def purge_celery():
 @app.shared_task
 def check_prediction(*args):
     """
-        This task is used to check if prediction is correct, when we receive a prediction from YoloTargetDetection.
-        If prediction is correct, we launch a task to manage the prediction and save on database.
+        This task is used to check if an image obtained from raspberri is a correct prediction
+        using the YoloTargetDetection Model.
+        If prediction is correct, we launch a task to start the prediction actions.
 
         Parameters:
         -----------
@@ -79,7 +80,7 @@ def check_prediction(*args):
     if not predicted_labels.empty:
         predicted_labels.apply(
             lambda p_labels:
-            launch_prediction_action.apply_async(
+            start_predictions_ok_actions.apply_async(
                 RawPredictionData(
                     pickle.dumps(image),
                     pickle.dumps(p_labels),
@@ -96,9 +97,9 @@ def check_prediction(*args):
 
 
 @app.shared_task
-def launch_prediction_action(*args):
+def start_predictions_ok_actions(*args):
     """
-        This task is used to launch a task to manage the prediction and save on database.
+        This task is used to launch a task to manage the prediction and save it on database.
 
         Parameters:
         -----------

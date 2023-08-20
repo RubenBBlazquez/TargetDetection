@@ -9,7 +9,7 @@ from freezegun import freeze_time
 import numpy as np
 import pandas as pd
 
-from BackEndApps.Predictions.CeleryTasks import launch_prediction_action, check_prediction
+from BackEndApps.Predictions.CeleryTasks import start_predictions_ok_actions, check_prediction
 import cv2
 
 from BackEndApps.Predictions.models import GoodPredictions, AllPredictions, RawPredictionData
@@ -86,7 +86,7 @@ def test_launch_prediction_action(celery_app_mock):
         'ycenter': 200
     })
 
-    launch_prediction_action(pickle.dumps(image), pickle.dumps(labels), 0, 0, datetime.now())
+    start_predictions_ok_actions(pickle.dumps(image), pickle.dumps(labels), 0, 0, datetime.now())
 
     prediction = GoodPredictions.objects.get()
     breakpoint()
