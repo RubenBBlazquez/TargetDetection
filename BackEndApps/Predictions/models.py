@@ -3,6 +3,7 @@ from typing import NamedTuple
 
 from attr import define
 from bson import ObjectId
+import django
 from django.db import models
 from datetime import datetime
 from djongo import models as djongo_models
@@ -41,7 +42,7 @@ class AllPredictions(models.Model):
         This class is used to save all the predictions, even if the prediction is good or bad.
     """
 
-    _id = djongo_models.ObjectIdField(db_column='_id', primary_key=True, default=ObjectId())
+    _id = djongo_models.ObjectIdField(db_column='_id', primary_key=True)
     image = models.TextField(db_column='image', default='')
     prediction = models.IntegerField(db_column='prediction', default=0)
     confidence = models.FloatField(db_column='confidence', default=0.0)
@@ -55,14 +56,14 @@ class GoodPredictions(models.Model):
         This class is used to save the predictions in which we have calculated the distances,
         and we have shot to the target.
     """
-    _id = djongo_models.ObjectIdField(db_column='_id', primary_key=True, default=ObjectId())
+    _id = djongo_models.ObjectIdField(db_column='_id', primary_key=True)
     predicted_image = models.TextField(db_column='predicted_image', default='')
     labels = models.TextField(db_column='predicted_labels', default='')
     predicted_distances = models.TextField(db_column='predicted_distances', default='')
     servo_position = models.IntegerField(db_column='servo_position', default=0)
     checked = models.BooleanField(db_column='checked', default=False)
-    date = models.DateTimeField(db_column='date', default=datetime.now())
-    prediction_id = djongo_models.ObjectIdField(db_column='prediction_id', default=ObjectId())
+    date = models.DateTimeField(db_column='date', default=django.utils.timezone.now)
+    prediction_id = models.TextField(db_column='prediction_id', default=str(ObjectId()))
 
     @classmethod
     def create_from(cls, data: CleanPredictionData) -> GoodPredictions:

@@ -74,7 +74,7 @@ def check_prediction(*args):
         confidence=float(predicted_labels['confidence'].mean())
     )
     prediction_object.save()
-    prediction_id = prediction_object._id
+    prediction_id = str(prediction_object._id)
 
     if not predicted_labels.empty:
         predicted_labels.apply(
