@@ -12,7 +12,6 @@ class CustomPicamera(Picamera2):
         config = self.create_preview_configuration(main={"size": self.camera_size},
                                                    controls={'FrameRate': self.frame_rate})
         self.configure(config)
-        self.start_preview(self.preview_type)
 
     def start_camera(self):
         self.start()

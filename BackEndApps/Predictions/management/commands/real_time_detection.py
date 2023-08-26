@@ -1,5 +1,5 @@
 import os
-
+import cv2
 from django.core.management.base import BaseCommand
 from BackEndApps.Predictions.models import RawData
 import pickle
@@ -20,10 +20,13 @@ class Command(BaseCommand):
         gpin_horizontal_servo = 13
         increment = 3
         servo_movements = 0
+        cv2.startWindowThread()
 
         while True:
             frames += 1
             image = self.picamera.capture_array()
+            cv2.imshow("Camera", image)
+            cv2.waitKey(1)       
             is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
 
             if frames < 15 or is_shoot_in_progress:
@@ -48,3 +51,5 @@ class Command(BaseCommand):
                 purge_celery.apply_async(queue='YoloPredictions', ignore_result=True, prority=1)
 
             frames = 0
+
+cv2.destroyAllWindows()
