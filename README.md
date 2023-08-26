@@ -44,6 +44,12 @@ Now you can run the frontend using:
 
 ## Target Detection
 
-First you need a raspberri pi, then you launch the next command:
+First you need a raspberri pi and execute this commands if you want that picamera works well:
+* **sudo apt-get install build-essential libcap-dev**
+* **sudo apt install -y python3-libcamera**
+**Note**: if you launch the project in a raspberri pi 4 bullseye, the best way to use the native libcamera is not using an venv
+  
+then you launch the next commands:
+* **python manage.py start_celery_worker** , you must init the celery worker because the real_time_detection use this queue to send predictions and process it when it can
 * **python manage.py real_time_detection**, which will launch the picamera and will control the servo motors 
 to catch different points of the contour and try to predict if there is a target or not with celery tasks.
