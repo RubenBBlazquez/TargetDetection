@@ -10,7 +10,7 @@ import Alert from 'react-bootstrap/Alert';
 import {getPredictions} from "./methods";
 
 function Predictions() {
-    const predictionsData = getPredictions();
+    // const predictionsData = getPredictions();
 
     return (
         <div className={'d-flex justify-content-center flex-column border'}>
