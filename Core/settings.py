@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / 'conf/.env')
 
-directory_separator = '\\' if platform.system() == 'windows' else '/'
+directory_separator = '\\' if platform.system().lower() == 'windows' else '/'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
