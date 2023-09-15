@@ -17,8 +17,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         frames = 0
         angle = 0
-        gpin_horizontal_servo = 13
-        increment = 3
+        gpin_horizontal_servo = 11
+        increment = 2
         servo_movements = 0
         cv2.startWindowThread()
 
@@ -32,7 +32,10 @@ class Command(BaseCommand):
             if frames < 15 or is_shoot_in_progress:
                 continue
             
-            servo = ServoMovement(gpin_horizontal_servo, angle if angle > 1 else 1)
+            if angle < 1:
+                angle = 3
+
+            servo = ServoMovement(gpin_horizontal_servo, angle)
             servo.stop()
 
             servo_movements += 1
@@ -40,7 +43,7 @@ class Command(BaseCommand):
             
             check_prediction.apply_async(raw_data, queue='YoloPredictions', ignore_result=True, prority=1)
 
-            if servo_movements % 4 == 0:
+            if servo_movements % 5 == 0:
                 increment = -increment
                 
             angle += increment

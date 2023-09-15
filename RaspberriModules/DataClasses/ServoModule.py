@@ -1,7 +1,7 @@
 from time import sleep
 from attrs import define, field
 import RPi.GPIO as GPIO
-
+from typing import Dict
 
 class SingletonMeta(type):
     _instances = {}
@@ -14,14 +14,62 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class ServoGPIOModule(metaclass=SingletonMeta):
+class ServoGPIOModule():
     def __init__(self, gpin: int) -> None:
         GPIO.cleanup()
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(gpin, GPIO.OUT)
         self.servo = GPIO.PWM(gpin, 50)
-        self.servo.start(0)
 
+@define(auto_attribs=True)
+class ServoManagement(metaclass=SingletonMeta):
+    """
+    Class to manage the initialization of the servos
+
+    Parameters
+    ----------
+    servos: Dict[int, GPIO.PWM]
+        contains all the servos initialized
+    
+    Notes
+    -----
+    This class is necesary because if you want to initialize a servo twice, 
+    you get a runtime error
+
+    """
+
+    servos: Dict[int, GPIO.PWM] = field(default={})
+
+    def _init_servo(self, gpin: int) -> GPIO:
+        """
+        method to manage the initialization of the servos
+
+        Parameters
+        ----------
+        gpin: int
+            physical pin where servo is connected in raspberri pi
+        
+        Returns
+        --------
+            the servo initialized to start working
+    
+        """
+        if len(self.servos.keys()) == 0:
+            GPIO.cleanup()
+            GPIO.setmode(GPIO.BOARD)
+        
+        GPIO.setup(gpin, GPIO.OUT)
+        return GPIO.PWM(gpin, 50)
+
+    def get_servo(self, gpin: int) -> GPIO.PWM:
+        if self.servos.get(gpin, None):
+            return self.servos[gpin]
+
+        new_servo = self._init_servo(gpin)
+        self.servos[gpin] = new_servo
+        new_servo.start(0)
+
+        return new_servo
 
 @define(auto_attribs=True)
 class ServoMovement:
@@ -30,7 +78,8 @@ class ServoMovement:
     servo: GPIO.PWM = field(default=None)
 
     def __attrs_post_init__(self):
-        self.servo = ServoGPIOModule(self.gpin).servo
+        servo = ServoManagement().get_servo(self.gpin)
+        self.servo = servo
         self.default_move()
 
     def _calculate_duty_cycle_percentage(self, angle: int):
