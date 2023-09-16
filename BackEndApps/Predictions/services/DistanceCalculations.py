@@ -203,7 +203,6 @@ class DistanceCalculations:
             index=['left', 'top', 'right', 'bottom']
         )
 
-
     def draw_lines_into_image(self, lines: List[Line] = None) -> None:
         """
         This method is used to draw lines into the image.

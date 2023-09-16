@@ -163,5 +163,5 @@ volumes/*
 .idea/
 prueba*.py
 node_modules/
-RaspberriModules/assets/shoot_in_process.tmp
+RaspberriModules/assets/shoot_in_progress.tmp
 *migrations

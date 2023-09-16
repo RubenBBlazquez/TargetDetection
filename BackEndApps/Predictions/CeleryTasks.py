@@ -12,6 +12,7 @@ import os
 import numpy as np
 import pandas as pd
 from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
+from RaspberriModules.DataClasses.ServoModule import ServoMovement
 
 
 @app.shared_task
@@ -109,6 +110,8 @@ def start_predictions_ok_actions(*args):
                     This argument contains the image in bytes format.
                 - labels_bytes: bytes
                     This argument contains the labels from the prediction in bytes format.
+                - prediction_id: str
+                    This argument contains the prediction id.
                 - servo_position: int
                     This argument contains the servo position when the image was taken.
                 - date: datetime
@@ -141,6 +144,12 @@ def start_predictions_ok_actions(*args):
 
     celeryApp.control.purge()
 
+    calculate_shoot_position.apply_async(
+        args=(pickle.dumps(distance_calculations.get_all_distances()),),
+        queue='YoloPredictions',
+        priority=10
+    )
+
 
 @app.shared_task
 def calculate_shoot_position(*args):
@@ -154,14 +163,22 @@ def calculate_shoot_position(*args):
                 - distances: bytes
                     This argument contains the distances to all sides of the target
     """
-    distances = args[0]
-    distances = pickle.loads(distances)
+    distances_bytes = args[0]
+    calculated_distances: pd.Series = pickle.loads(distances_bytes)
     tmp_file = 'RasperriModules/assets/shoot_in_progress.tmp'
     # we create a tmp file to indicate that we are calculating the shoot position
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
 
     # we calculate the shoot position
-    shoot_position = distances.get_shoot_position()
+    left = calculated_distances.left
+    right = calculated_distances.right
+    top = calculated_distances.top
+    bottom = calculated_distances.bottom
+
+    center = (left + right) / 2
+    center_top = (top + bottom) / 2
+
+    shoot_position = (center, center_top)
 
     os.remove(tmp_file)

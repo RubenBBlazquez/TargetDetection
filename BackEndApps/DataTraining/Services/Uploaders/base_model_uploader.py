@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod, abstractclassmethod
 from enum import Enum
 from typing import Any
@@ -52,4 +53,6 @@ class DummyModelUploader(ModelUploader):
     """
 
     def upload(self, model: Any) -> bool:
-        raise Exception("You are using a dummy uploader")
+        logging.error('You are using a dummy uploader, the model will not be uploaded to any service.')
+
+        return False
