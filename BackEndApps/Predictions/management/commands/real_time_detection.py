@@ -7,6 +7,7 @@ from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
 from BackEndApps.Predictions.CeleryTasks import check_prediction, purge_celery
 from datetime import datetime
+import time
 
 class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
@@ -18,7 +19,7 @@ class Command(BaseCommand):
         frames = 0
         angle = 0
         gpin_horizontal_servo = 11
-        increment = 2
+        increment = 6
         servo_movements = 0
         cv2.startWindowThread()
 
@@ -32,24 +33,25 @@ class Command(BaseCommand):
             if frames < 15 or is_shoot_in_progress:
                 continue
             
-            if angle < 1:
-                angle = 3
+            if angle < 0:
+                angle = 1
 
             servo = ServoMovement(gpin_horizontal_servo, angle)
             servo.stop()
+            time.sleep(0.5)
 
             servo_movements += 1
             raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
             
             check_prediction.apply_async(raw_data, queue='YoloPredictions', ignore_result=True, prority=1)
 
-            if servo_movements % 5 == 0:
+            if servo_movements % 3 == 0:
                 increment = -increment
                 
             angle += increment
             
             # we check if servo do all possible movements and clean unnecessary tasks
-            if servo_movements % 8 == 0:
+            if servo_movements % 3 == 0:
                 print('purging tasks')
                 purge_celery.apply_async(queue='YoloPredictions', ignore_result=True, prority=1)
 
