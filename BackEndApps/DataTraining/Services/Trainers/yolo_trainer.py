@@ -51,10 +51,10 @@ class YoloTrainer(Trainer):
             self._training_phase = YoloTrainingPhase.TRAIN.name
 
         if YoloTrainingPhase.VAL.value in message:
-            self._training_phase = YoloTrainingPhase.TEST.name
+            self._training_phase = YoloTrainingPhase.VAL.name
 
         if YoloTrainingPhase.TEST.value in message:
-            self._training_phase = YoloTrainingPhase.VAL.name
+            self._training_phase = YoloTrainingPhase.TEST.name
 
     def _collect_important_messages(self, stdout: str, phase_key: str) -> None:
         """
@@ -98,7 +98,7 @@ class YoloTrainer(Trainer):
                 epochs: int
                     This is the number of epochs to train the yolo model.
                 yolo_file_data: str
-                    This is the path to the file data to train the model.
+                    This is the path to the file data.yaml to train the model.
 
             Returns
             -------
