@@ -5,7 +5,7 @@ New Project to detect targets and classify it
 With a 3D printer, we print this model, you can see the needed pieces in the next url:
 https://www.thingiverse.com/thing:1369637.
 
-The model is a little bit small, so we have to scale it to 300% in the program you use to print the 3D files.
+The model is a little bit small, so we have to scale it to 250% in the program you use to print the 3D files.
 
 Once you have the pieces, you have to buy the next components:
 * **2 Servo motors** 1 for the X axis and 1 for the Y axis, you can buy it in **aliexpress.com**
@@ -17,7 +17,7 @@ the next steps, i give you to your imagination
 ## Installation
 
 ### BackEnd
-You need to install python 3.10.0, you can download it from the next url: https://www.python.org/downloads/release/python-3100/
+You need to install python 3.9.0, you can download it from the next url: https://www.python.org/downloads/release/python-3100/
 
 Once you have installed python, you need to install the backend dependencies using:
 * **pip install -r requirements.txt**
