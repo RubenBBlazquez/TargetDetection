@@ -80,7 +80,6 @@ class ServoMovement:
     def __attrs_post_init__(self):
         servo = ServoManagement().get_servo(self.gpin)
         self.servo = servo
-        self.default_move()
 
     def _calculate_duty_cycle_percentage(self, angle: int):
         return (angle / 18) + 3

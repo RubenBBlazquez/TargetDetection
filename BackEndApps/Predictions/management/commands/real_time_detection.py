@@ -8,53 +8,77 @@ from RaspberriModules.DataClasses.ServoModule import ServoMovement
 from BackEndApps.Predictions.CeleryTasks import check_prediction, purge_celery
 from datetime import datetime
 import time
+from enum import Enum
+import numpy as np
 
+class CameraType(Enum):
+    USB = 'usb'
+    CSI = 'csi'
 
 class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.picamera = CustomPicamera()
-        self.picamera.start_camera()
+        self.picamera.start()
+        self.usb_camera_port = 0
+        self.usb_camera = cv2.VideoCapture(self.usb_camera_port)
+    
+    def get_image_from_camera(self, camera_type: CameraType, init_cam=True):
+        if camera_type == CameraType.CSI:
+            return self.picamera.capture_array()    
+        
+        ret, image = self.usb_camera.read()
 
+        if type(image) != np.ndarray:
+            self.usb_camera_port = 1 if self.usb_camera_port == 0 else 0
+            self.usb_camera = cv2.VideoCapture(
+                self.usb_camera_port
+            )
+            ret, image = self.usb_camera.read()
+
+        return image
+        
     def handle(self, *args, **options):
         frames = 0
         angle = 0
-        gpin_horizontal_servo = 11
-        increment = 6
+        gpin_horizontal_servo = int(os.getenv('X_SERVO_PIN'))
+        increment = 2
         servo_movements = 0
         cv2.startWindowThread()
 
         while True:
             frames += 1
-            image = self.picamera.capture_array()
-            cv2.imshow("Camera", image)
+            image = self.get_image_from_camera(CameraType.CSI, True)
+            cv2.imshow("CSI Camera", image)
             cv2.waitKey(1)       
             is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
 
             if frames < 15 or is_shoot_in_progress:
                 continue
-
+            
             if angle < 0:
-                angle = 1
+                angle = 0
 
+            second_camera_image = self.get_image_from_camera(CameraType.USB, True)
             servo = ServoMovement(gpin_horizontal_servo, angle)
+            servo.default_move()
             servo.stop()
-            time.sleep(0.5)
+            time.sleep(0.6)
 
             servo_movements += 1
             raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
+            
+            check_prediction.apply_async(raw_data, queue='check_predictions', ignore_result=True, prority=1)
 
-            check_prediction.apply_async(raw_data, queue='YoloPredictions', ignore_result=True, prority=1)
-
-            if servo_movements % 3 == 0:
+            if servo_movements % 5 == 0:
                 increment = -increment
-
+                
             angle += increment
-
             # we check if servo do all possible movements and clean unnecessary tasks
-            if servo_movements % 3 == 0:
+            if servo_movements % 10 == 0:
                 print('purging tasks')
-                purge_celery.apply_async(('check_predictions',), queue='purge_data', ignore_result=True, prority=9)
+                servo_movements = 0
+                purge_celery.apply_async(('check_predictions', ), queue='purge_data', ignore_result=True, prority=1)
 
             frames = 0
 

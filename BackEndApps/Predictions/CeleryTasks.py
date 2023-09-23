@@ -13,7 +13,9 @@ import numpy as np
 import pandas as pd
 from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
-
+from RaspberriModules.DataClasses.PowerModule import PowerModule
+import time
+import RPi.GPIO as GPIO
 
 @app.shared_task
 def purge_celery(*args):
@@ -153,10 +155,11 @@ def start_predictions_ok_actions(*args):
     celeryApp.control.purge()
 
     # we move the servo to the position where the target is
-    ServoMovement(int(os.getenv('X_SERVO')), servo_position)
-    calculate_shoot_position(distance_calculations.get_all_distances())
+    x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position)
+    x_servo.default_move()
+    calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
-def calculate_shoot_position(calculated_distances: pd.Series):
+def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
     """
         This task is used to calculate the shot position (move servo to the correct position to shoot the target).
 
@@ -165,11 +168,10 @@ def calculate_shoot_position(calculated_distances: pd.Series):
         - calculated_distances: pd.Series
             This argument contains the distances to all sides of the target
     """
-    tmp_file = 'RasperriModules/assets/shoot_in_progress.tmp'
+    tmp_file = f'RaspberriModules/assets/shoot_in_progress.tmp'
     # we create a tmp file to indicate that we are calculating the shoot position
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
-
     # we calculate the shoot position
     left = calculated_distances.left
     right = calculated_distances.right
@@ -180,5 +182,13 @@ def calculate_shoot_position(calculated_distances: pd.Series):
     center_top = (top + bottom) / 2
 
     shoot_position = (center, center_top)
+
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 0)
+    laser = PowerModule(int(os.getenv('LASER_PIN')))
+
+    laser.on()
+    y_servo.move_to(9)
+    time.sleep(1)
+    laser.off()
 
     os.remove(tmp_file)
