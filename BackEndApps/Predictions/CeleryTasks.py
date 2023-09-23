@@ -16,11 +16,19 @@ from RaspberriModules.DataClasses.ServoModule import ServoMovement
 
 
 @app.shared_task
-def purge_celery():
+def purge_celery(*args):
     """
     This task is used to clean all tasks in celery queue
+
+    Parameters:
+    -----------
+    *args: tuple
+        This tuple contains the following arguments:
+            - queue_name: str
+                This argument contains the name of the queue to purge.
     """
-    api_url = f'{os.getenv("RABBITMQ_URL_API")}/queues/{os.getenv("RABBITMQ_VHOST")}/YoloPredictions'
+    queue_name = args[0]
+    api_url = f'{os.getenv("RABBITMQ_URL_API")}/queues/{os.getenv("RABBITMQ_VHOST")}/{queue_name}'
     response = requests.get(api_url)
 
     if response.status_code != 200:
@@ -90,7 +98,7 @@ def check_prediction(*args):
                     datetime.now()
                 ),
                 ignore_result=True,
-                queue='YoloPredictions',
+                queue='prediction_ok_actions',
                 priority=10
             ),
             axis=1
@@ -144,27 +152,19 @@ def start_predictions_ok_actions(*args):
 
     celeryApp.control.purge()
 
-    calculate_shoot_position.apply_async(
-        args=(pickle.dumps(distance_calculations.get_all_distances()),),
-        queue='YoloPredictions',
-        priority=10
-    )
+    # we move the servo to the position where the target is
+    ServoMovement(int(os.getenv('X_SERVO')), servo_position)
+    calculate_shoot_position(distance_calculations.get_all_distances())
 
-
-@app.shared_task
-def calculate_shoot_position(*args):
+def calculate_shoot_position(calculated_distances: pd.Series):
     """
         This task is used to calculate the shot position (move servo to the correct position to shoot the target).
 
         Parameters:
         -----------
-        *args: tuple
-            This tuple contains the following arguments:
-                - distances: bytes
-                    This argument contains the distances to all sides of the target
+        - calculated_distances: pd.Series
+            This argument contains the distances to all sides of the target
     """
-    distances_bytes = args[0]
-    calculated_distances: pd.Series = pickle.loads(distances_bytes)
     tmp_file = 'RasperriModules/assets/shoot_in_progress.tmp'
     # we create a tmp file to indicate that we are calculating the shoot position
     # and the real time prediction must be stopped

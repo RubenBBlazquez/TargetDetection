@@ -11,5 +11,10 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks(['BackEndApps.Predictions'], related_name='CeleryTasks')
 
 app.conf.task_queues = [
-    Queue('YoloPredictions', Exchange('default'), routing_key='default', queue_arguments={'x-max-priority': 10})
+    Queue('check_predictions', Exchange('check_predictions'), routing_key='check_predictions',
+          queue_arguments={'x-max-priority': 10}),
+    Queue('purge_data', Exchange('purge_data'), routing_key='purge_data',
+          queue_arguments={'x-max-priority': 10}),
+    Queue('prediction_ok_actions', Exchange('prediction_ok_actions'), routing_key='prediction_ok_actions',
+          queue_arguments={'x-max-priority': 10}),
 ]
