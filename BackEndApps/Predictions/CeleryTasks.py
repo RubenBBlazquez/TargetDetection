@@ -153,10 +153,15 @@ def start_predictions_ok_actions(*args):
     ).save()
 
     celeryApp.control.purge()
+    is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
+
+    if is_shoot_in_progress:
+        return
 
     # we move the servo to the position where the target is
     x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position)
     x_servo.default_move()
+    time.sleep(0.5)
     calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
 def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
@@ -183,11 +188,12 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
 
     shoot_position = (center, center_top)
 
-    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 0)
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 11)
     laser = PowerModule(int(os.getenv('LASER_PIN')))
 
     laser.on()
-    y_servo.move_to(9)
+    y_servo.default_move()
+    y_servo.stop()
     time.sleep(1)
     laser.off()
 

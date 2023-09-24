@@ -16,10 +16,9 @@ class SingletonMeta(type):
 
 class ServoGPIOModule():
     def __init__(self, gpin: int) -> None:
-        GPIO.cleanup()
-        GPIO.setmode(GPIO.BOARD)
         GPIO.setup(gpin, GPIO.OUT)
         self.servo = GPIO.PWM(gpin, 50)
+        self.servo_position = -1
 
 @define(auto_attribs=True)
 class ServoManagement(metaclass=SingletonMeta):
@@ -40,7 +39,7 @@ class ServoManagement(metaclass=SingletonMeta):
 
     servos: Dict[int, GPIO.PWM] = field(default={})
 
-    def _init_servo(self, gpin: int) -> GPIO:
+    def _init_servo(self, gpin: int) -> ServoGPIOModule:
         """
         method to manage the initialization of the servos
 
@@ -58,16 +57,37 @@ class ServoManagement(metaclass=SingletonMeta):
             GPIO.cleanup()
             GPIO.setmode(GPIO.BOARD)
         
-        GPIO.setup(gpin, GPIO.OUT)
-        return GPIO.PWM(gpin, 50)
+        return ServoGPIOModule(gpin)
+
+    def set_actual_servo_position(self, gpin: int, position: int):
+        """
+        method to set the actual servo position
+        if it is different to the last
+
+        Parameters
+        ----------
+        gpin: int
+            physical pin where servo is connected in raspberri pi
+        position: int
+            position where you want to move the servo
+        """
+        self.servos[gpin].servo_position = position
 
     def get_servo(self, gpin: int) -> GPIO.PWM:
+        """
+        method that initialize or return a servo
+
+        Parameters
+        ----------
+        gpin: int
+            physical pin where servo is connected in raspberri pi
+        """
         if self.servos.get(gpin, None):
             return self.servos[gpin]
 
         new_servo = self._init_servo(gpin)
         self.servos[gpin] = new_servo
-        new_servo.start(0)
+        new_servo.servo.start(0)
 
         return new_servo
 
@@ -75,23 +95,32 @@ class ServoManagement(metaclass=SingletonMeta):
 class ServoMovement:
     gpin: int = field(default=11)
     position: int = field(default=0)
-    servo: GPIO.PWM = field(default=None)
+    servo_module: ServoGPIOModule = field(default=None)
+    servo_management: ServoManagement = field(default=ServoManagement())
 
     def __attrs_post_init__(self):
-        servo = ServoManagement().get_servo(self.gpin)
-        self.servo = servo
+        self.servo_module = self.servo_management.get_servo(self.gpin)
 
     def _calculate_duty_cycle_percentage(self, angle: int):
         return (angle / 18) + 3
 
     def default_move(self):
+        if self.servo_module.servo_position == self.position:
+            return
+        
         print(f'---- moving servo to {self.position}----')
-        self.servo.ChangeDutyCycle(self.position)
+        self.servo_management.set_actual_servo_position(self.gpin, self.position)
+        self.servo_module.servo.ChangeDutyCycle(self.position)
         sleep(0.2)
 
     def move_to(self, position):
-        self.servo.ChangeDutyCycle(position)
+        if self.servo_module.servo_position == self.position:
+            return
+    
+        print(f'---- moving servo to {self.position}----')
+        self.servo_management.set_actual_servo_position(self.gpin, self.position)
+        self.servo_module.servo.ChangeDutyCycle(position)
         sleep(0.2)
 
     def stop(self):
-        self.servo.ChangeDutyCycle(0)
+        self.servo_module.servo.ChangeDutyCycle(0)
