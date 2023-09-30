@@ -9,7 +9,7 @@ from freezegun import freeze_time
 import numpy as np
 import pandas as pd
 
-from BackEndApps.Predictions.CeleryTasks import start_predictions_ok_actions, check_prediction
+from BackEndApps.Predictions.CeleryTasks import start_predictions_ok_actions, check_prediction, calculate_shoot_position
 import cv2
 
 from BackEndApps.Predictions.models import GoodPredictions, AllPredictions, RawPredictionData
@@ -140,3 +140,15 @@ def test_start_predictions_ok_actions(celery_app_mock):
     prediction = GoodPredictions.objects.get(prediction_id=expected_prediction_id)
 
     assert prediction.prediction_id == expected_prediction_id
+
+def test_calculate_shoot_position():
+    with mock.path("BackEndApps.Predictions.CeleryTasks.purge_specific_queue",  autospec=True):
+        servo = mock.patch('BackEndApps.Predictions.CeleryTasks.ServoMovement', autospec=True)
+        labels = pd.Series({
+                'left': 10,
+                'right': 5,
+                'bottom': 3,
+                'top': 8,
+        })
+
+        calculate_shoot_position(labels, servo)

@@ -14,6 +14,19 @@ import numpy as np
 class CameraType(Enum):
     USB = 'usb'
     CSI = 'csi'
+def enumerate_cameras():
+    index = 0
+    arr = []
+    while True:
+        cap = cv2.VideoCapture(index)
+        if not cap.read()[0]:
+            break
+        else:
+            arr.append(index)
+        cap.release()
+        index += 1
+    return arr
+
 
 class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
@@ -40,9 +53,9 @@ class Command(BaseCommand):
         
     def handle(self, *args, **options):
         frames = 0
-        angle = 0
+        angle = 1
         gpin_horizontal_servo = int(os.getenv('X_SERVO_PIN'))
-        increment = 2
+        increment = 1
         servo_movements = 0
         cv2.startWindowThread()
 
@@ -57,25 +70,26 @@ class Command(BaseCommand):
                 continue
             
             if angle < 0:
-                angle = 0
+                angle = 1
 
             second_camera_image = self.get_image_from_camera(CameraType.USB, True)
+            cv2.imshow("USB Camera", second_camera_image)
+
             servo = ServoMovement(gpin_horizontal_servo, angle)
             servo.default_move()
-            servo.stop()
-            time.sleep(0.6)
+            time.sleep(0.1)
 
             servo_movements += 1
             raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
             
             check_prediction.apply_async(raw_data, queue='check_predictions', ignore_result=True, prority=1)
 
-            if servo_movements % 5 == 0:
+            if servo_movements % 10 == 0:
                 increment = -increment
                 
             angle += increment
             # we check if servo do all possible movements and clean unnecessary tasks
-            if servo_movements % 10 == 0:
+            if servo_movements % 20 == 0:
                 print('purging tasks')
                 servo_movements = 0
                 purge_celery.apply_async(('check_predictions', ), queue='purge_data', ignore_result=True, prority=1)

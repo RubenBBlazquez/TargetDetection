@@ -111,16 +111,16 @@ class ServoMovement:
         print(f'---- moving servo to {self.position}----')
         self.servo_management.set_actual_servo_position(self.gpin, self.position)
         self.servo_module.servo.ChangeDutyCycle(self.position)
-        sleep(0.2)
+        sleep(0.01)
 
-    def move_to(self, position):
-        if self.servo_module.servo_position == self.position:
+    def move_to(self, position: int):
+        if self.servo_module.servo_position == position:
             return
     
-        print(f'---- moving servo to {self.position}----')
-        self.servo_management.set_actual_servo_position(self.gpin, self.position)
+        print(f'---- moving servo to {position}----')
+        self.servo_management.set_actual_servo_position(self.gpin, position)
         self.servo_module.servo.ChangeDutyCycle(position)
-        sleep(0.2)
+        sleep(0.01)
 
     def stop(self):
         self.servo_module.servo.ChangeDutyCycle(0)

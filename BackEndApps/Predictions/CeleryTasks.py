@@ -1,8 +1,7 @@
 import json
-
 from celery import app
 import requests
-from Core.Celery.Celery import app as celeryApp
+from Core.Celery.Celery import app as celeryApp, purge_specific_queue
 from datetime import datetime
 from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions
 import logging
@@ -39,9 +38,10 @@ def purge_celery(*args):
     queue_info = response.json()
     ready_tasks = int(queue_info['messages_ready'])
 
-    if ready_tasks > 15:
-        print('purging unnecesary tasks')
-        celeryApp.control.purge()
+    if ready_tasks >= 20:
+        print(f'purging unnecesary tasks from {queue_name}')
+        purge_specific_queue(queue_name)
+        purge_specific_queue("purge_data")
 
 
 @app.shared_task
@@ -152,16 +152,14 @@ def start_predictions_ok_actions(*args):
         )
     ).save()
 
-    celeryApp.control.purge()
     is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
-
     if is_shoot_in_progress:
         return
 
     # we move the servo to the position where the target is
     x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position)
     x_servo.default_move()
-    time.sleep(0.5)
+    time.sleep(0.1)
     calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
 def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
@@ -182,19 +180,56 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     right = calculated_distances.right
     top = calculated_distances.top
     bottom = calculated_distances.bottom
+    
+    total_length_x = left + right
+    center = total_length / 2
+    angle_per_cm_x = total_length_x/12
 
-    center = (left + right) / 2
-    center_top = (top + bottom) / 2
+    x_angle = 0
+    if right > left:
+        cm_to_center = center - left
+        x_angle = cm_to_center * angle_per_cm_x
+    else:
+        cm_to_center = right - center
+        x_angle = cm_to_center * angle_per_cm_x
 
-    shoot_position = (center, center_top)
+    total_length_y = top + bottom
+    center_top = total_length_y / 2
+    angle_per_cm_y = total_length_y/12
 
-    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 11)
-    laser = PowerModule(int(os.getenv('LASER_PIN')))
+    y_angle = 0
+    if top > bottom:
+        cm_to_center = center - bottom
+        y_angle = cm_to_center * angle_per_cm_y
+    else:
+        cm_to_center = top - center
+        y_angle = cm_to_center * angle_per_cm_y
 
-    laser.on()
-    y_servo.default_move()
+
+    x_servo.move_to(x_angle)
+    x_servo.stop()
+
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 0)
+    y_servo.move_to(y_angle if y_angle > 8.5 else 8.5)
     y_servo.stop()
-    time.sleep(1)
-    laser.off()
 
+    breakpoint()
+
+    laser = PowerModule(int(os.getenv('LASER_PIN')))
+    buzzer = PowerModule(int(os.getenv('BUZZER_PIN')))
+
+    laser_speed = 0.55
+    for x in range(1, 50):
+        laser.on()
+        buzzer.on()
+        time.sleep(laser_speed)
+        
+        laser.off()
+        buzzer.off()
+        time.sleep(laser_speed)
+
+        if x % 3 == 0 and laser_speed > 0.10:
+            laser_speed = laser_speed - 0.10
+
+    purge_specific_queue("prediction_ok_actions")
     os.remove(tmp_file)
