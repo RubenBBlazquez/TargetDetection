@@ -183,6 +183,28 @@ class DistanceCalculations:
             side=CoordsSide.BOTTOM
         )
 
+    @property
+    def line_to_max_width(self) -> Line:
+        """
+            This method is used to calculate the distance to the max width of the image.
+        """
+        return Line(
+            Point(0, int(self.image.shape[0]/2)),
+            Point(int(self.image.shape[1]), int(self.image.shape[0]/2)),
+            axis=0,
+        )
+
+    @property
+    def line_to_max_height(self) -> Line:
+        """
+            This method is used to calculate the distance to the max height of the image.
+        """
+        return Line(
+            Point(int(self.image.shape[1]/2), 0),
+            Point(int(self.image.shape[1]/2), int(self.image.shape[0])),
+            axis=1,
+        )
+
     def get_all_lines(self) -> List[Line]:
         """
             This method is used to get all lines.
@@ -191,7 +213,9 @@ class DistanceCalculations:
             self.line_to_left_side,
             self.line_to_upper_side,
             self.line_to_right_side,
-            self.line_to_bottom_side
+            self.line_to_bottom_side,
+            self.line_to_max_width,
+            self.line_to_max_height
         ]
 
     def get_all_distances(self) -> pd.Series:
@@ -200,7 +224,7 @@ class DistanceCalculations:
         """
         return pd.Series(
             [self.get_distance_in_cm(line) for line in self.get_all_lines()],
-            index=['left', 'top', 'right', 'bottom']
+            index=['left', 'top', 'right', 'bottom', 'width', 'height']
         )
 
     def draw_lines_into_image(self, lines: List[Line] = None) -> None:

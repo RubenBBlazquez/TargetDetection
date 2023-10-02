@@ -1,7 +1,7 @@
 import json
 from celery import app
 import requests
-from Core.Celery.Celery import app as celeryApp, purge_specific_queue
+from Core.Celery.Celery import purge_specific_queue
 from datetime import datetime
 from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions
 import logging
@@ -14,7 +14,6 @@ from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalcul
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
 from RaspberriModules.DataClasses.PowerModule import PowerModule
 import time
-import RPi.GPIO as GPIO
 
 @app.shared_task
 def purge_celery(*args):
@@ -175,55 +174,51 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     # we create a tmp file to indicate that we are calculating the shoot position
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
+
     # we calculate the shoot position
     left = calculated_distances.left
     right = calculated_distances.right
     top = calculated_distances.top
     bottom = calculated_distances.bottom
-    
-    total_length_x = left + right
-    center = total_length / 2
-    angle_per_cm_x = total_length_x/12
+    servo_position = servo_x.servo_module.servo_position
+
+    center_target_x = (calculated_distances.width - (right + left)) / 2
+    angle_per_cm_x = calculated_distances.width/12
 
     x_angle = 0
     if right > left:
-        cm_to_center = center - left
+        cm_to_center = left - center_target_x
         x_angle = cm_to_center * angle_per_cm_x
     else:
-        cm_to_center = right - center
+        cm_to_center = right + center_target_x
         x_angle = cm_to_center * angle_per_cm_x
 
-    total_length_y = top + bottom
-    center_top = total_length_y / 2
-    angle_per_cm_y = total_length_y/12
+    center_target_y =  (calculated_distances.height - (top + bottom))/2
+    angle_per_cm_y = calculated_distances.height/12
 
-    y_angle = 0
     if top > bottom:
-        cm_to_center = center - bottom
+        cm_to_center = center_target_y + bottom
         y_angle = cm_to_center * angle_per_cm_y
     else:
-        cm_to_center = top - center
+        cm_to_center = top - center_target_y
         y_angle = cm_to_center * angle_per_cm_y
 
+    servo_x.move_to(x_angle)
+    servo_x.stop()
 
-    x_servo.move_to(x_angle)
-    x_servo.stop()
-
-    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN')), 0)
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0)
     y_servo.move_to(y_angle if y_angle > 8.5 else 8.5)
     y_servo.stop()
 
-    breakpoint()
-
-    laser = PowerModule(int(os.getenv('LASER_PIN')))
-    buzzer = PowerModule(int(os.getenv('BUZZER_PIN')))
+    laser = PowerModule(int(os.getenv('LASER_PIN', 0)))
+    buzzer = PowerModule(int(os.getenv('BUZZER_PIN', 0)))
 
     laser_speed = 0.55
     for x in range(1, 50):
         laser.on()
         buzzer.on()
         time.sleep(laser_speed)
-        
+
         laser.off()
         buzzer.off()
         time.sleep(laser_speed)

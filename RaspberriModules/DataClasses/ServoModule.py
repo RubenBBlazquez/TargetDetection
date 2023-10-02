@@ -3,6 +3,7 @@ from attrs import define, field
 import RPi.GPIO as GPIO
 from typing import Dict
 
+
 class SingletonMeta(type):
     _instances = {}
 
@@ -14,11 +15,12 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class ServoGPIOModule():
+class ServoGPIOModule:
     def __init__(self, gpin: int) -> None:
         GPIO.setup(gpin, GPIO.OUT)
         self.servo = GPIO.PWM(gpin, 50)
         self.servo_position = -1
+
 
 @define(auto_attribs=True)
 class ServoManagement(metaclass=SingletonMeta):
@@ -56,7 +58,7 @@ class ServoManagement(metaclass=SingletonMeta):
         if len(self.servos.keys()) == 0:
             GPIO.cleanup()
             GPIO.setmode(GPIO.BOARD)
-        
+
         return ServoGPIOModule(gpin)
 
     def set_actual_servo_position(self, gpin: int, position: int):
@@ -91,6 +93,7 @@ class ServoManagement(metaclass=SingletonMeta):
 
         return new_servo
 
+
 @define(auto_attribs=True)
 class ServoMovement:
     gpin: int = field(default=11)
@@ -107,7 +110,7 @@ class ServoMovement:
     def default_move(self):
         if self.servo_module.servo_position == self.position:
             return
-        
+
         print(f'---- moving servo to {self.position}----')
         self.servo_management.set_actual_servo_position(self.gpin, self.position)
         self.servo_module.servo.ChangeDutyCycle(self.position)
@@ -116,7 +119,7 @@ class ServoMovement:
     def move_to(self, position: int):
         if self.servo_module.servo_position == position:
             return
-    
+
         print(f'---- moving servo to {position}----')
         self.servo_management.set_actual_servo_position(self.gpin, position)
         self.servo_module.servo.ChangeDutyCycle(position)

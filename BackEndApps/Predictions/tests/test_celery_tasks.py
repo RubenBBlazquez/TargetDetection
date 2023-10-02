@@ -1,6 +1,6 @@
 import json
 import pickle
-import unittest.mock as mock
+from unittest import mock
 from datetime import datetime
 
 import pytest
@@ -34,19 +34,15 @@ from BackEndApps.Predictions.models import GoodPredictions, AllPredictions, RawP
         ),
     ]
 )
-@mock.patch('BackEndApps.Predictions.CeleryTasks.celeryApp', autospec=True)
 @mock.patch('BackEndApps.Predictions.CeleryTasks.YoloTargetDetection', autospec=True)
 @mock.patch('BackEndApps.Predictions.CeleryTasks.start_predictions_ok_actions', autospec=True)
 @pytest.mark.django_db
 def test_check_prediction_with_prediction_ok(
         mock_start_predictions_ok_actions,
         yolo_target_detection_mock,
-        celery_app_mock,
         yolo_prediction,
         expected_prediction,
 ):
-    celery_app_mock.control.purge = mock.MagicMock()
-
     # Create a mock for the result of the predict method
     mock_predict_result = mock.MagicMock()
     mock_predict_result.pandas().xywh.__getitem__.return_value = yolo_prediction
@@ -85,18 +81,15 @@ def test_check_prediction_with_prediction_ok(
         ),
     ]
 )
-@mock.patch('BackEndApps.Predictions.CeleryTasks.celeryApp', autospec=True)
 @mock.patch('BackEndApps.Predictions.CeleryTasks.YoloTargetDetection', autospec=True)
 @mock.patch('BackEndApps.Predictions.CeleryTasks.start_predictions_ok_actions', autospec=True)
 @pytest.mark.django_db
 def test_check_prediction_with_prediction_not_ok(
         mock_start_predictions_ok_actions,
         yolo_target_detection_mock,
-        celery_app_mock, yolo_prediction,
+        yolo_prediction,
         expected_prediction,
 ):
-    celery_app_mock.control.purge = mock.MagicMock()
-
     # Create a mock for the result of the predict method
     mock_predict_result = mock.MagicMock()
     mock_predict_result.pandas().xywh.__getitem__.return_value = yolo_prediction
@@ -114,10 +107,8 @@ def test_check_prediction_with_prediction_not_ok(
 
 
 @freeze_time("2020-01-01 12:00:00")
-@mock.patch('BackEndApps.Predictions.CeleryTasks.celeryApp', autospec=True)
 @pytest.mark.django_db
-def test_start_predictions_ok_actions(celery_app_mock):
-    celery_app_mock.control.purge = mock.MagicMock()
+def test_start_predictions_ok_actions():
     image = np.array(cv2.imread('BackEndApps/Predictions/tests/assets/target_image.jpg'))
 
     labels = pd.Series({
@@ -142,13 +133,18 @@ def test_start_predictions_ok_actions(celery_app_mock):
     assert prediction.prediction_id == expected_prediction_id
 
 def test_calculate_shoot_position():
-    with mock.path("BackEndApps.Predictions.CeleryTasks.purge_specific_queue",  autospec=True):
-        servo = mock.patch('BackEndApps.Predictions.CeleryTasks.ServoMovement', autospec=True)
+    power_module_mock = mock.patch("BackEndApps.Predictions.CeleryTasks.PowerModule", autospec=True)
+    purge_specific_queue_mock = mock.patch("BackEndApps.Predictions.CeleryTasks.purge_specific_queue", autospec=True)
+    servo_mock = mock.patch('BackEndApps.Predictions.CeleryTasks.ServoMovement', autospec=True)
+
+    with power_module_mock, purge_specific_queue_mock, servo_mock as servo:
         labels = pd.Series({
-                'left': 10,
-                'right': 5,
-                'bottom': 3,
-                'top': 8,
+            'left': 10,
+            'right': 5,
+            'bottom': 3,
+            'top': 8,
+            'width': 20,
+            'height': 15,
         })
 
         calculate_shoot_position(labels, servo)
