@@ -143,6 +143,8 @@ def test_calculate_shoot_position():
             'right': 5,
             'bottom': 3,
             'top': 8,
+            'from_top_to_center': 5,
+            'from_bottom_to_center': 5,
             'width': 20,
             'height': 15,
         })

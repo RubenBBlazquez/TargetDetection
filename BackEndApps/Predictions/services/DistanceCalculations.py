@@ -52,6 +52,7 @@ class Line:
     pt2: Point
     axis: int = attr.ib(default=0)
     side: CoordsSide = attr.ib(default=CoordsSide.LEFT)
+    color: Tuple[int, int, int] = attr.ib(default=(255, 0, 0))
 
 
 @define(auto_attribs=True)
@@ -159,6 +160,32 @@ class DistanceCalculations:
         )
 
     @property
+    def line_from_top_side_to_center(self) -> Line:
+        """
+            This method is used to calculate the distance to the upper side of the image.
+        """
+        return Line(
+            Point(int(self.x1) + 3, int(self.y0)),
+            Point(int(self.x1) + 3, int(self.image.shape[0] / 2)),
+            axis=1,
+            side=CoordsSide.UP,
+            color=(0, 0, 255)
+        )
+
+    @property
+    def line_from_bottom_side_to_center(self) -> Line:
+        """
+            This method is used to calculate the distance to the upper side of the image.
+        """
+        return Line(
+            Point(int(self.x0), int(self.y1)),
+            Point(int(self.x0), int(self.image.shape[0] / 2)),
+            axis=1,
+            side=CoordsSide.UP,
+            color=(0, 0, 255)
+        )
+
+    @property
     def line_to_right_side(self) -> Line:
         """
             This method is used to calculate the distance to the right side of the image.
@@ -189,9 +216,10 @@ class DistanceCalculations:
             This method is used to calculate the distance to the max width of the image.
         """
         return Line(
-            Point(0, int(self.image.shape[0]/2)),
-            Point(int(self.image.shape[1]), int(self.image.shape[0]/2)),
+            Point(0, int(self.image.shape[0] / 2)),
+            Point(int(self.image.shape[1]), int(self.image.shape[0] / 2)),
             axis=0,
+            color=(255, 0, 0)
         )
 
     @property
@@ -200,9 +228,10 @@ class DistanceCalculations:
             This method is used to calculate the distance to the max height of the image.
         """
         return Line(
-            Point(int(self.image.shape[1]/2), 0),
-            Point(int(self.image.shape[1]/2), int(self.image.shape[0])),
+            Point(int(self.image.shape[1] / 2), 0),
+            Point(int(self.image.shape[1] / 2), int(self.image.shape[0])),
             axis=1,
+            color=(255, 0, 0)
         )
 
     def get_all_lines(self) -> List[Line]:
@@ -214,8 +243,10 @@ class DistanceCalculations:
             self.line_to_upper_side,
             self.line_to_right_side,
             self.line_to_bottom_side,
+            self.line_from_top_side_to_center,
+            self.line_from_bottom_side_to_center,
             self.line_to_max_width,
-            self.line_to_max_height
+            self.line_to_max_height,
         ]
 
     def get_all_distances(self) -> pd.Series:
@@ -224,7 +255,8 @@ class DistanceCalculations:
         """
         return pd.Series(
             [self.get_distance_in_cm(line) for line in self.get_all_lines()],
-            index=['left', 'top', 'right', 'bottom', 'width', 'height']
+            index=['left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center', 'width',
+                   'height']
         )
 
     def draw_lines_into_image(self, lines: List[Line] = None) -> None:
@@ -249,20 +281,20 @@ class DistanceCalculations:
         )
 
         for line in lines:
-            cv2.line(self.image, line.pt1, line.pt2, (255, 0, 0), 1)
+            cv2.line(self.image, line.pt1, line.pt2, line.color, 1)
             cv2.putText(
                 self.image,
                 f'{self.get_distance_in_cm(line)} cm',
                 self.calculate_coords_text_cm(line),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (255, 0, 0),
+                line.color,
                 1,
                 cv2.LINE_AA
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(2000)
+        cv2.waitKey(500000)
         cv2.destroyAllWindows()
 
         return self.image

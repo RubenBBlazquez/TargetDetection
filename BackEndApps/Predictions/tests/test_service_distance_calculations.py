@@ -38,8 +38,8 @@ mark_different_images = pytest.mark.parametrize(
                 'confidence': 0.99,
                 'height': 100,
                 'width': 100,
-                'xcenter': 200,
-                'ycenter': 200
+                'xcenter': 80,
+                'ycenter': 20
             })
         )
     ],
@@ -147,6 +147,13 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
 def test_draw_lines_showing_images(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
     distance_calculations.draw_lines_into_image()
+
+@mark_different_images
+def test_get_all_distances(test_image, labels):
+    distance_calculations = DistanceCalculations.create_from(test_image, labels)
+    distances = distance_calculations.get_all_distances()
+
+    assert list(distances.index) == ['left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center', 'width', 'height']
 
 
 @pytest.mark.skip(reason='This test is only for manual testing')

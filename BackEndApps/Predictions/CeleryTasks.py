@@ -157,8 +157,6 @@ def start_predictions_ok_actions(*args):
 
     # we move the servo to the position where the target is
     x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position)
-    x_servo.default_move()
-    time.sleep(0.1)
     calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
 def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
@@ -175,41 +173,71 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
 
+    duty_cycle_per_cm = float(os.getenv('DUTY_CYCLE_PER_CM', 0.25))
+    servo_duty_cycle_position = servo_x.servo_module.servo_position
+
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0)
+    y_servo_medium_position = float(os.getenv('Y_SERVO_MEDIUM_POSITION_CYCLE', 0))
+    y_servo_bottom_max_position = float(os.getenv('Y_SERVO_BOTTOM_POSITION_CYCLE', 0))
+    y_servo_top_max_position = float(os.getenv('Y_SERVO_MAX_TOP_POSITION_CYCLE', 0))
+
     # we calculate the shoot position
     left = calculated_distances.left
     right = calculated_distances.right
     top = calculated_distances.top
     bottom = calculated_distances.bottom
-    servo_position = servo_x.servo_module.servo_position
+    from_top_side_to_center = calculated_distances.from_top_side_to_center
+    from_bottom_side_to_center = calculated_distances.from_bottom_side_to_center
 
-    center_target_x = (calculated_distances.width - (right + left)) / 2
-    angle_per_cm_x = calculated_distances.width/12
+    target_width = calculated_distances.width - (right + left)
+    center_target_x = target_width/2
+    center_x_where_image_was_taken = (calculated_distances.width/2) -  int(os.getenv("DISTANCE_CAMERA_ERROR_CM", 3))
 
-    x_angle = 0
-    if right > left:
-        cm_to_center = left - center_target_x
-        x_angle = cm_to_center * angle_per_cm_x
+    # we are using this formula to calculate if the target is centered:
+    # (center_image - 0.5 <= (right + center_target_x) <= center_image + 0.5)
+    # if we have the image (witdh = 100) and (left = 44.50) and (right = 45) and the target has 10 cm size
+    # so the formula to know if is centered is: 50 - 0.5 <= (45 + 5) <= 50 + 0.5 = true
+    is_target_centered = center_x_where_image_was_taken - 0.5 <= (right + center_target_x) <= center_x_where_image_was_taken + 0.5
+
+    if is_target_centered:
+        y_servo.move_to(y_servo_medium_position)
+        y_servo.stop()
+
+        shoot()
+
+    if not is_target_centered:
+        if right > left:
+            cm_to_center = left + center_target_x
+            duty_cycle_position = servo_duty_cycle_position + (cm_to_center * duty_cycle_per_cm)
+            servo_x.move_to(duty_cycle_position if duty_cycle_position < 12 else 12)
+        else:
+            cm_to_center = right + center_target_x
+            duty_cycle_position = servo_duty_cycle_position - (cm_to_center * duty_cycle_per_cm)
+            servo_x.move_to(duty_cycle_position if duty_cycle_position > 0.1 else 0.1)
+
+        servo_x.stop()
+
+    if bottom < top:
+        duty_cycle_position = y_servo_medium_position - (from_top_side_to_center * duty_cycle_per_cm)
+        y_servo.move_to(
+            duty_cycle_position if duty_cycle_position > y_servo_bottom_max_position else y_servo_bottom_max_position
+        )
     else:
-        cm_to_center = right + center_target_x
-        x_angle = cm_to_center * angle_per_cm_x
+        duty_cycle_position = y_servo_medium_position + (from_bottom_side_to_center * duty_cycle_per_cm)
+        y_servo.move_to(
+            duty_cycle_position if duty_cycle_position < y_servo_top_max_position else y_servo_top_max_position
+        )
 
-    center_target_y =  (calculated_distances.height - (top + bottom))/2
-    angle_per_cm_y = calculated_distances.height/12
+    y_servo.stop()
+    shoot()
 
-    if top > bottom:
-        cm_to_center = center_target_y + bottom
-        y_angle = cm_to_center * angle_per_cm_y
-    else:
-        cm_to_center = top - center_target_y
-        y_angle = cm_to_center * angle_per_cm_y
-
-    servo_x.move_to(x_angle)
-    servo_x.stop()
-
-    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0)
-    y_servo.move_to(y_angle if y_angle > 8.5 else 8.5)
+    y_servo.move_to(y_servo_medium_position)
     y_servo.stop()
 
+    purge_specific_queue("prediction_ok_actions")
+    os.remove(tmp_file)
+
+def shoot():
     laser = PowerModule(int(os.getenv('LASER_PIN', 0)))
     buzzer = PowerModule(int(os.getenv('BUZZER_PIN', 0)))
 
@@ -225,6 +253,3 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
 
         if x % 3 == 0 and laser_speed > 0.10:
             laser_speed = laser_speed - 0.10
-
-    purge_specific_queue("prediction_ok_actions")
-    os.remove(tmp_file)
