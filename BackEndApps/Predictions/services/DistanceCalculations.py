@@ -294,7 +294,7 @@ class DistanceCalculations:
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(500000)
+        cv2.waitKey(5000)
         cv2.destroyAllWindows()
 
         return self.image

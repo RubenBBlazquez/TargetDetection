@@ -11,7 +11,7 @@ import os
 import numpy as np
 import pandas as pd
 from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
-from RaspberriModules.DataClasses.ServoModule import ServoMovement
+from RaspberriModules.DataClasses.ServoModule import ServoMovement, ServoManagement
 from RaspberriModules.DataClasses.PowerModule import PowerModule
 import time
 
@@ -129,7 +129,15 @@ def start_predictions_ok_actions(*args):
     image_bytes, labels_bytes, prediction_id, servo_position, date = args
     original_image: np.ndarray = pickle.loads(image_bytes)
     labels: pd.Series = pickle.loads(labels_bytes)
-
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
+    print(servo_position)
     if datetime.now().day != date.day:
         logging.info(
             f'TASK (launch_prediction_action) REJECTED: DATE DAY ({date.day}) ARGUMENT '
@@ -155,8 +163,8 @@ def start_predictions_ok_actions(*args):
     if is_shoot_in_progress:
         return
 
-    # we move the servo to the position where the target is
-    x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position)
+    ServoManagement().servos = {}
+    x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position, name="x2")
     calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
 def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
@@ -174,9 +182,8 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     open(tmp_file, 'w').close()
 
     duty_cycle_per_cm = float(os.getenv('DUTY_CYCLE_PER_CM', 0.25))
-    servo_duty_cycle_position = servo_x.servo_module.servo_position
-
-    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0)
+    servo_duty_cycle_position = servo_x.position
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0, name='y1')
     y_servo_medium_position = float(os.getenv('Y_SERVO_MEDIUM_POSITION_CYCLE', 0))
     y_servo_bottom_max_position = float(os.getenv('Y_SERVO_BOTTOM_POSITION_CYCLE', 0))
     y_servo_top_max_position = float(os.getenv('Y_SERVO_MAX_TOP_POSITION_CYCLE', 0))
@@ -201,6 +208,7 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
 
     if is_target_centered:
         y_servo.move_to(y_servo_medium_position)
+        time.sleep(1)
         y_servo.stop()
 
         shoot()
@@ -209,29 +217,37 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
         if right > left:
             cm_to_center = left + center_target_x
             duty_cycle_position = servo_duty_cycle_position + (cm_to_center * duty_cycle_per_cm)
-            servo_x.move_to(duty_cycle_position if duty_cycle_position < 12 else 12)
+            duty_cycle_position = duty_cycle_position if duty_cycle_position > 0 else 1
+            print(f"1111, {servo_duty_cycle_position} {left} {center_target_x} {duty_cycle_position}")
+            servo_x.move_to(duty_cycle_position)
         else:
             cm_to_center = right + center_target_x
             duty_cycle_position = servo_duty_cycle_position - (cm_to_center * duty_cycle_per_cm)
-            servo_x.move_to(duty_cycle_position if duty_cycle_position > 0.1 else 0.1)
+            duty_cycle_position = duty_cycle_position if duty_cycle_position > 0 else 0
+            print(f"2222, {servo_duty_cycle_position} {right} {center_target_x} {duty_cycle_position}")
+            servo_x.move_to(duty_cycle_position)
 
+        time.sleep(1)
         servo_x.stop()
 
     if bottom < top:
-        duty_cycle_position = y_servo_medium_position - (from_top_side_to_center * duty_cycle_per_cm)
+        duty_cycle_position = y_servo_medium_position + (from_top_side_to_center * duty_cycle_per_cm)
         y_servo.move_to(
             duty_cycle_position if duty_cycle_position > y_servo_bottom_max_position else y_servo_bottom_max_position
         )
     else:
-        duty_cycle_position = y_servo_medium_position + (from_bottom_side_to_center * duty_cycle_per_cm)
+        duty_cycle_position = y_servo_medium_position - (from_bottom_side_to_center * duty_cycle_per_cm)
         y_servo.move_to(
             duty_cycle_position if duty_cycle_position < y_servo_top_max_position else y_servo_top_max_position
         )
 
+    time.sleep(1)
     y_servo.stop()
     shoot()
 
+    y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0, name='y1')
     y_servo.move_to(y_servo_medium_position)
+    time.sleep(1)
     y_servo.stop()
 
     purge_specific_queue("prediction_ok_actions")

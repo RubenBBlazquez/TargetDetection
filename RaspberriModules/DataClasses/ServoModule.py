@@ -99,6 +99,7 @@ class ServoMovement:
     gpin: int = field(default=11)
     position: int = field(default=0)
     servo_module: ServoGPIOModule = field(default=None)
+    name: str = field(default="")
     servo_management: ServoManagement = field(default=ServoManagement())
 
     def __attrs_post_init__(self):
@@ -120,7 +121,7 @@ class ServoMovement:
         if self.servo_module.servo_position == position:
             return
 
-        print(f'---- moving servo to {position}----')
+        print(f'---- moving servo {self.name} to {position}----')
         self.servo_management.set_actual_servo_position(self.gpin, position)
         self.servo_module.servo.ChangeDutyCycle(position)
         sleep(0.01)
