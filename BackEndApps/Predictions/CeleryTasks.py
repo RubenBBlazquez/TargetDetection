@@ -129,15 +129,7 @@ def start_predictions_ok_actions(*args):
     image_bytes, labels_bytes, prediction_id, servo_position, date = args
     original_image: np.ndarray = pickle.loads(image_bytes)
     labels: pd.Series = pickle.loads(labels_bytes)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
-    print(servo_position)
+
     if datetime.now().day != date.day:
         logging.info(
             f'TASK (launch_prediction_action) REJECTED: DATE DAY ({date.day}) ARGUMENT '
@@ -181,7 +173,7 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
 
-    duty_cycle_per_cm = float(os.getenv('DUTY_CYCLE_PER_CM', 0.25))
+    duty_cycle_per_cm = float(os.getenv('DUTY_CYCLE_PER_CM', 0.5))
     servo_duty_cycle_position = servo_x.position
     y_servo = ServoMovement(int(os.getenv('Y_SERVO_PIN', 0)), 0, name='y1')
     y_servo_medium_position = float(os.getenv('Y_SERVO_MEDIUM_POSITION_CYCLE', 0))

@@ -87,7 +87,7 @@ DATABASES = {
         "ENGINE": "djongo",
         "NAME": "target_detection",
         "CLIENT": {
-            "host": "localhost",
+            "host": "192.168.1.108",
             "port": 27017,
             "username": "ruben",
             "password": "103856",
