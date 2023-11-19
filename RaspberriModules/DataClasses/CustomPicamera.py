@@ -9,8 +9,7 @@ class CustomPicamera(Picamera2):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        config = self.create_preview_configuration(main={"size": self.camera_size},
-                                                   controls={'FrameRate': self.frame_rate})
+        config = self.create_preview_configuration(main={"size": self.camera_size})
         self.configure(config)
 
     def start_camera(self):
