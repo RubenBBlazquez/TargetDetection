@@ -1,7 +1,7 @@
-import os
-import time
 from enum import Enum
 from random import randint
+from typing import Tuple
+from copy import deepcopy
 import cv2
 import gym
 import pandas as pd
@@ -9,10 +9,7 @@ from gym import spaces
 import numpy as np
 import tensorflow as tf
 
-from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
-from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
-from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
-from RaspberriModules.DataClasses.ServoModule import ServoMovement
+from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations, CM_IN_PIXELS
 
 
 class CameraType(Enum):
@@ -20,26 +17,22 @@ class CameraType(Enum):
     CSI = 'csi'
 
 
-class ServoMotorEnv(gym.Env):
+class SimulateTurretEnv(gym.Env):
     """
     Custom Environment that follows the OpenAI gym interface.
     It simulates a servo motor that needs to center a target within a camera's view.
     """
 
     def __init__(self):
-        super(ServoMotorEnv, self).__init__()
+        super(SimulateTurretEnv, self).__init__()
         cv2.startWindowThread()
 
-        self.servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), 1, name='x1')
-        # self.picamera = CustomPicamera()
-        # self.picamera.start()
-        self.usb_camera_port = 0
-        self.model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
-        self.usb_camera = cv2.VideoCapture(
-            self.usb_camera_port
-        )
         self.n_stack_at_the_end = 0
         self.n_stack_at_start = 0
+        self.steps_without_target = 0
+        self.regenerate_target = True
+        self.simulated_image = None
+        self.simulated_labels = None
 
         # Define action and observation space
         # Actions: Move left (-1), stay (0), move right (+1)
@@ -52,36 +45,39 @@ class ServoMotorEnv(gym.Env):
         # Initial state: [motor position, target offset]
         self.state = np.array([0, 0], dtype=np.float32)
 
-        self.steps_without_target = 0
+    def simulate_information(self, movement: int = 0) -> Tuple[bool, np.ndarray, pd.Series]:
+        if not self.regenerate_target:
+            x_center_update = (2 * CM_IN_PIXELS) * movement
+            self.simulated_labels.xcenter = np.clip(
+                self.simulated_labels.xcenter + x_center_update, 0, self.simulated_image.shape[1]
+            )
 
-    def get_image_from_camera(self, camera_type: CameraType, init_cam=True):
-        if camera_type == CameraType.CSI:
-            return self.picamera.capture_array()
+            return True, self.simulated_image, self.simulated_labels
 
-        ret, image = self.usb_camera.read()
+        random_image = randint(1, 2)
+        image = cv2.imread(f'./images_to_simulate/image_{random_image}.jpg')
 
         if type(image) != np.ndarray:
-            self.usb_camera_port = 1 if self.usb_camera_port == 0 else 0
-            self.usb_camera = cv2.VideoCapture(
-                self.usb_camera_port
-            )
-            ret, image = self.usb_camera.read()
+            return False, np.ndarray([]), pd.Series()
 
-        return image
+        self.regenerate_target = False
+        random_division = randint(5, 10)
+        random_width = image.shape[1] // random_division
+        random_height = image.shape[0] // random_division
+        random_x_center = randint(0, image.shape[1] - random_width)
+        random_y_center = randint(0, image.shape[0] - random_height)
+
+        self.simulated_labels = pd.Series({
+            'xcenter': random_x_center,
+            'ycenter': random_y_center,
+            'width': random_width,
+            'height': random_height
+        })
+        self.simulated_image = deepcopy(image)
+
+        return True, image, self.simulated_labels
 
     def step(self, action) -> tuple:
-        image = self.get_image_from_camera(CameraType.USB, True)
-        result = self.model.predict(image)
-        labels = result.pandas().xywh[0]
-        predicted_labels = labels[labels['confidence'] > 0.60]
-        target_detected = not predicted_labels.empty
-        print(labels, target_detected)
-
-        if not target_detected:
-            self.steps_without_target += 1
-        else:
-            self.steps_without_target = 0
-
         # Decode action
         if action == 0:
             movement = -1  # Move left
@@ -90,10 +86,10 @@ class ServoMotorEnv(gym.Env):
         else:
             movement = 0  # Stay
 
+        target_detected, image, labels = self.simulate_information(movement)
+
         # Update state: move the motor
         self.state[0] = np.clip(self.state[0] + movement, 1, 12)
-        self.servo.move_to(int(self.state[0]))
-        time.sleep(0.1)
 
         if self.state[0] >= 11:
             self.n_stack_at_the_end += 1
@@ -105,10 +101,18 @@ class ServoMotorEnv(gym.Env):
         else:
             self.n_stack_at_start = 0
 
+        if (
+                (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
+                (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1)
+        ):
+            print('salimos, debido a que el objetivo está fuera de los límites')
+            return self.state, -10, True, {}
+
         reward = 0
         done = False
-        
+
         if target_detected:
+            self.steps_without_target = 0
             distance_calculations = DistanceCalculations.create_from(image, labels)
             calculated_distances = distance_calculations.get_all_distances()
 
@@ -122,8 +126,10 @@ class ServoMotorEnv(gym.Env):
 
             # Check if the episode is done
             done = self.is_target_centered(calculated_distances)
+        else:
+            self.steps_without_target += 1
 
-        if self.steps_without_target > 12:
+        if self.steps_without_target >= 10:
             print('salimos, no encontramos target')
             self.steps_without_target = 0
             return self.state, self.calculate_reward(), True, {}
@@ -132,31 +138,37 @@ class ServoMotorEnv(gym.Env):
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        position = np.clip(randint(1, 6), 1, 12)
+        position = np.clip(randint(1, 10), 1, 12)
         self.state = np.array([position, 0], dtype=np.float32)
-        self.servo.move_to(position)
-        time.sleep(1)
         self.steps_without_target = 0
         self.n_stack_at_start = 0
         self.n_stack_at_the_end = 0
+        self.regenerate_target = True
 
         return self.state
 
     def calculate_reward(self):
         offset = self.state[1]
 
-        if self.n_stack_at_start >= 4 or self.n_stack_at_the_end >= 4:
-            return -50  # Adjusted penalty
-
         reward = -abs(offset)  # Gradual penalty based on distance
 
-        if abs(offset) <= 1:  
-            reward += 15  # Adjusted reward for centering the target
+        if self.n_stack_at_start >= 4 or self.n_stack_at_the_end >= 4:
+            self.n_stack_at_start = 0
+            self.n_stack_at_the_end = 0
+            reward -= 20  # Adjusted penalty for staying at extremes
+        else:
+            # Small reward for moving away from extremes
+            reward += 2
+
+        if abs(offset) <= 1:
+            reward += 15  # Higher reward for centering the target
+        elif abs(offset) <= 3:
+            reward += 5  # Lower reward for being close
 
         return reward
 
-
-    def is_target_centered(self, calculated_distances: pd.Series):
+    @staticmethod
+    def is_target_centered(calculated_distances: pd.Series):
         left = calculated_distances.left
         right = calculated_distances.right
 
@@ -169,25 +181,32 @@ class ServoMotorEnv(gym.Env):
         # (center_image - 0.5 <= (right + center_target_x) <= center_image + 0.5)
         # if we have the image (witdh = 100) and (left = 44.50) and (right = 45) and the target has 10 cm size
         # so the formula to know if is centered is: 50 - 1 <= (45 + 5) <= 50 + 1 = true
-        return center_x_where_image_was_taken - 2 <= (right + center_target_x) <= center_x_where_image_was_taken + 2
+        return center_x_where_image_was_taken - 1 <= (right + center_target_x) <= center_x_where_image_was_taken + 1
 
-    def calculate_offset(self,calculated_distances: pd.Series):
+    @staticmethod
+    def calculate_offset(calculated_distances: pd.Series):
         left = calculated_distances.left
         right = calculated_distances.right
 
-        # Define the condition for ending the episode
+        center = (calculated_distances.width / 2) - 1
         target_width = calculated_distances.width - (right + left)
         center_target_x = target_width / 2
 
         if right > left:
-            return left + center_target_x
+            return -(center + left + center_target_x)
 
-        return right + center_target_x
-
+        return center + right + center_target_x
 
     def render(self, mode='human'):
-        # Render the environment to the screen (optional)
-        print(f"Servo Position: {self.state[0]}, Target Offset: {self.state[1]}")
+        if self.simulated_image is None:
+            return
+
+        DistanceCalculations.create_from(
+            deepcopy(self.simulated_image), self.simulated_labels
+        ).draw_lines_into_image(100)
+
+        cv2.waitKey(100)
+        cv2.destroyAllWindows()
 
 
 def choose_action(model, state):
@@ -206,7 +225,7 @@ def choose_action(model, state):
     return action
 
 
-def discount_rewards(rewards, gamma=0.95):
+def discount_rewards(rewards, gamma=0.7):
     """
     Take 1D float array of rewards and compute discounted rewards.
     Args:
@@ -224,7 +243,7 @@ def discount_rewards(rewards, gamma=0.95):
     return discounted_rewards
 
 
-def train_policy_network(env: ServoMotorEnv, policy_net, optimizer, episodes=100):
+def train_policy_network(env: SimulateTurretEnv, policy_net, optimizer, episodes=100):
     for episode in range(episodes):
         state = env.reset()
         done = False
@@ -232,13 +251,14 @@ def train_policy_network(env: ServoMotorEnv, policy_net, optimizer, episodes=100
 
         while not done:
             action = choose_action(policy_net, state)
-            print('action', action)
+            print(f"Episode: {episode}, --- action, {action}")
+
             new_state, reward, done, _ = env.step(action)
+            env.render()
 
             print("-----------------------------------------------------")
             print(new_state, reward, done)
             print("-----------------------------------------------------")
-
 
             episode_states.append(state)
             episode_actions.append(action)
@@ -260,6 +280,18 @@ def train_policy_network(env: ServoMotorEnv, policy_net, optimizer, episodes=100
 
         gradients = tape.gradient(loss, policy_net.trainable_variables)
         optimizer.apply_gradients(zip(gradients, policy_net.trainable_variables))
+        policy_net.save('./model_binaries/policy_net.h5')
 
         print(f"Episode: {episode}, Loss: {loss.numpy()}")
 
+
+if __name__ == '__main__':
+    env = SimulateTurretEnv()
+    policy_net = tf.keras.Sequential(
+        [
+            tf.keras.layers.Dense(10, activation="relu", input_shape=(env.observation_space.shape[0],)),
+            tf.keras.layers.Dense(8, activation="relu", ),
+            tf.keras.layers.Dense(3, activation="softmax"),
+        ]
+    )
+    train_policy_network(env, tf.keras.models.load_model('model_binaries/policy_net_main2.h5'), tf.optimizers.Adam(learning_rate=0.001))
