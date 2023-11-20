@@ -165,3 +165,5 @@ prueba*.py
 node_modules/
 RaspberriModules/assets/shoot_in_progress.tmp
 *migrations
+
+BackEndApps/Predictions/ml_models/images_to_simulate/*

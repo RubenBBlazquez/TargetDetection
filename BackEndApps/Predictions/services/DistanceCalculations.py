@@ -259,12 +259,14 @@ class DistanceCalculations:
                    'height']
         )
 
-    def draw_lines_into_image(self, lines: List[Line] = None) -> None:
+    def draw_lines_into_image(self, wait_time_window: int, lines: List[Line] = None) -> None:
         """
         This method is used to draw lines into the image.
 
         Parameters
         ----------
+        wait_time_window: int
+            This parameter contains the time to wait to close the window.
         lines: List[Line]
             This parameter contains the lines to be drawn into the image.
         """
@@ -272,12 +274,13 @@ class DistanceCalculations:
         if lines is None:
             lines = self.get_all_lines()
 
+        cv2.startWindowThread()
         cv2.rectangle(
             self.image,
             (self.x0, self.y0),
             (self.x1, self.y1),
             (36, 255, 12),
-            1
+            3
         )
 
         for line in lines:
@@ -294,7 +297,7 @@ class DistanceCalculations:
             )
 
         cv2.imshow('lines', self.image)
-        cv2.waitKey(5000)
+        cv2.waitKey(wait_time_window)
         cv2.destroyAllWindows()
 
         return self.image
