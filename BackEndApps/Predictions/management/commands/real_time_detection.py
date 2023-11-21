@@ -4,7 +4,7 @@ from typing import Any
 import cv2
 from django.core.management.base import BaseCommand
 
-from BackEndApps.Predictions.ml_models import ServoMotorEnv, train_policy_network
+from BackEndApps.Predictions.ml_models.real_turret_env import RealTurretEnv, train_policy_network
 from BackEndApps.Predictions.models import RawData
 import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
@@ -26,7 +26,7 @@ class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.usb_camera_port = 0
-        self.usb_camera = cv2.VideoCapture(0)
+        self.usb_camera = None
 
     def get_image_from_camera(self, camera: Any, camera_type: CameraType):
         if camera_type == CameraType.CSI:
@@ -96,15 +96,8 @@ class Command(BaseCommand):
 
     @staticmethod
     def detection_with_ml_model(simulate_training=False):
-        env = ServoMotorEnv()
-        policy_net = tf.keras.Sequential(
-            [
-                tf.keras.layers.Dense(32, activation="relu", input_shape=(env.observation_space.shape[0],)),
-                tf.keras.layers.Dense(3, activation="softmax"),
-            ]
-        )
-        train_policy_network(env, policy_net, tf.optimizers.Adam(learning_rate=0.01))
-        policy_net.save('policy_net.h5')
+        env = RealTurretEnv()
+        train_policy_network(env, tf.keras.models.load_model("BackEndApps/Predictions/ml_models/model_binaries/policy_net_main2.h5"), tf.optimizers.Adam(learning_rate=0.01))
 
     def add_arguments(self, parser):
         parser.add_argument('--use-celery', type=bool, default=False, help='path to the directory to train the models')
