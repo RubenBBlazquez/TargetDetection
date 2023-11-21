@@ -4,7 +4,7 @@ from typing import Any
 import cv2
 from django.core.management.base import BaseCommand
 
-from BackEndApps.Predictions.ml_models.real_turret_env import RealTurretEnv, train_policy_network
+from BackEndApps.Predictions.ml_models.real_turret_env import RealTurretEnv, train_policy_network, get_image_from_camera
 from BackEndApps.Predictions.models import RawData
 import pickle
 from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
@@ -28,21 +28,6 @@ class Command(BaseCommand):
         self.usb_camera_port = 0
         self.usb_camera = None
 
-    def get_image_from_camera(self, camera: Any, camera_type: CameraType):
-        if camera_type == CameraType.CSI:
-            return camera.capture_array()
-
-        ret, image = camera.read()
-
-        if type(image) != np.ndarray:
-            self.usb_camera_port = 1 if self.usb_camera_port == 0 else 0
-            camera = cv2.VideoCapture(
-                self.usb_camera_port
-            )
-            ret, image = camera.read()
-
-        return image
-
     def detection_with_celery(self):
         picamera = CustomPicamera()
         picamera.start()
@@ -56,7 +41,7 @@ class Command(BaseCommand):
 
         while True:
             frames += 1
-            image = self.get_image_from_camera(picamera,  CameraType.CSI)
+            image = get_image_from_camera(picamera,  CameraType.CSI)
             cv2.imshow("CSI Camera", image)
             cv2.waitKey(1)
             is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')

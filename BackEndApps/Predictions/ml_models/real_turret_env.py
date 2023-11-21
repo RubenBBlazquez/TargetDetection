@@ -3,6 +3,8 @@ import os
 import time
 from enum import Enum
 from random import randint
+from typing import Any
+
 import cv2
 import gym
 import pandas as pd
@@ -18,6 +20,21 @@ from RaspberriModules.DataClasses.ServoModule import ServoMovement
 class CameraType(Enum):
     USB = 'usb'
     CSI = 'csi'
+
+def get_image_from_camera(camera: Any, camera_type: CameraType, usb_camera_port=0):
+    if camera_type == CameraType.CSI:
+        return camera.capture_array()
+
+    ret, image = camera.read()
+
+    if type(image) != np.ndarray:
+        usb_camera_port = 1 if usb_camera_port == 0 else 0
+        camera = cv2.VideoCapture(
+            usb_camera_port
+        )
+        ret, image = camera.read()
+
+    return image
 
 
 class RealTurretEnv(gym.Env):
@@ -50,20 +67,12 @@ class RealTurretEnv(gym.Env):
 
         # Observations: Position of the motor, and the offset of the target from the center
         # Here, we consider the offset as a signed value to indicate the direction
-        self.observation_space = spaces.Box(low=np.array([0, -12]), high=np.array([12, 12]), dtype=np.float32)
+        self.observation_space = spaces.Box(low=np.array([2, -12]), high=np.array([12, 12]), dtype=np.float32)
 
         # Initial state: [motor position, target offset]
         self.state = np.array([0, 0], dtype=np.float32)
 
         self.steps_without_target = 0
-
-    def get_image_from_camera(self, camera_type: CameraType):
-        if camera_type == CameraType.CSI:
-            return self.picamera.capture_array()
-
-        ret, image = self.usb_camera.read()
-
-        return image
 
     def step(self, action) -> tuple:
         # Decode action
@@ -93,25 +102,23 @@ class RealTurretEnv(gym.Env):
         reward = 0
         done = False
 
-        self.image = self.get_image_from_camera(CameraType.USB)
-        target_detected = False
-        
+        self.image = get_image_from_camera(self.usb_camera, CameraType.USB, self.usb_camera_port)
         result = self.model.predict(self.image)
         self.labels = result.pandas().xywh[0]
         self.labels = self.labels[self.labels['confidence'] > 0.60]
         target_detected = not self.labels.empty
-
-        if ( target_detected and 
-                ((self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
-                (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1))
-        ):
-            print('salimos, debido a que el objetivo está fuera de los límites')
-            return self.state, -10, True, {}
-
-
         print(self.labels)
+
         if target_detected:
             self.steps_without_target = 0
+            is_target_out_bounds = (
+                    (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
+                    (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1)
+            )
+            if is_target_out_bounds:
+                print('salimos, debido a que el objetivo está fuera de los límites')
+                return self.state, -10, True, {}
+
             distance_calculations = DistanceCalculations.create_from(self.image, self.labels)
             calculated_distances = distance_calculations.get_all_distances()
 
@@ -132,7 +139,7 @@ class RealTurretEnv(gym.Env):
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        position = np.clip(randint(2, 12), 1, 12)
+        position = np.clip(randint(2, 12), 2, 12)
         self.state = np.array([position, 0], dtype=np.float32)
         self.servo.move_to(position)
         time.sleep(1)
@@ -197,19 +204,18 @@ class RealTurretEnv(gym.Env):
             return True
 
         if self.labels.empty:
-            cv2.imshow("image",  deepcopy(self.image))
+            cv2.imshow("image", deepcopy(self.image))
             cv2.waitKey(1000)
             cv2.destroyAllWindows()
             return True
 
-
-        print(11111, self.labels)
         DistanceCalculations.create_from(
             deepcopy(self.image), self.labels
         ).draw_lines_into_image(100)
 
         cv2.waitKey(500)
         cv2.destroyAllWindows()
+
 
 def choose_action(model, state):
     """
@@ -228,16 +234,36 @@ def choose_action(model, state):
 
 
 def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100):
-    state = env.reset()
-    done = False
+    while True:
+        state = env.reset()
+        done = False
+        position = np.clip(randint(2, 12), 2, 12)
+        movement = 1
 
-    while not done:
-        action = choose_action(policy_net, state)
-        print('action', action)
-        new_state, reward, done, _ = env.step(action)
-        # env.render()
-        print("-----------------------------------------------------")
-        print(new_state, reward, done)
-        print("-----------------------------------------------------")
+        while True:
+            image = get_image_from_camera(env.usb_camera, CameraType.USB, env.usb_camera_port)
+            result = env.model.predict(image)
+            labels = result.pandas().xywh[0]
+            labels = labels[labels['confidence'] > 0.60]
 
-        state = new_state
+            if not labels.empty:
+                break
+
+            env.servo.move_to(position)
+            time.sleep(0.4)
+            env.servo.stop()
+
+            position = np.clip(position + movement, 2, 12)
+            if position >= 12 or position <= 2:
+                movement = -1
+
+        while not done:
+            action = choose_action(policy_net, state)
+            print('action', action)
+            new_state, reward, done, _ = env.step(action)
+            # env.render()
+            print("-----------------------------------------------------")
+            print(new_state, reward, done)
+            print("-----------------------------------------------------")
+
+            state = new_state
