@@ -1,14 +1,12 @@
 import os
 
-import torch
-
 from Core.settings import directory_separator as slash
 from Core.Services.TargetDetection.DetectionMethods import DetectionMethods
 import yolov5
 
 
 class YoloTargetDetection(DetectionMethods):
-    models_path = os.path.abspath(os.getcwd()) + f'{slash}models{slash}yolov5s{slash}exp4{slash}weights{slash}'
+    models_path = os.path.abspath(os.getcwd()) + f'{slash}../../../models{slash}yolov5s{slash}exp4{slash}weights{slash}'
 
     def __init__(self, model_name):
         self.model = yolov5.load(f'{self.models_path}{model_name}')

@@ -1,4 +1,4 @@
-yolov5==7.0.12
+yolov5==7.0.13
 django==3.2.8
 python-dotenv
 djongo==1.3.6

@@ -3,7 +3,7 @@ import os
 import time
 from enum import Enum
 from random import randint
-from typing import Any
+from typing import Any, Tuple
 
 import cv2
 import gym
@@ -12,14 +12,16 @@ from gym import spaces
 import numpy as np
 import tensorflow as tf
 
-from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
+from BackEndApps.Predictions.services.DistanceCalculations import CM_IN_PIXELS, DistanceCalculations
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
+from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
 from RaspberriModules.DataClasses.ServoModule import ServoMovement
 
 
 class CameraType(Enum):
     USB = 'usb'
     CSI = 'csi'
+
 
 def get_image_from_camera(camera: Any, camera_type: CameraType, usb_camera_port=0):
     if camera_type == CameraType.CSI:
@@ -34,6 +36,7 @@ def get_image_from_camera(camera: Any, camera_type: CameraType, usb_camera_port=
         )
         ret, image = camera.read()
 
+    ret.release()
     return image
 
 
@@ -50,14 +53,14 @@ class RealTurretEnv(gym.Env):
         self.servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), 1, name='x1')
         self.image = None
         self.labels = pd.Series()
-        # self.picamera = CustomPicamera()
-        # self.picamera.start()
+        self.picamera = CustomPicamera()
+        self.picamera.start()
         self.usb_camera_port = 0
         self.model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
 
-        self.usb_camera = cv2.VideoCapture(
-            self.usb_camera_port
-        )
+        # self.usb_camera = cv2.VideoCapture(
+        #     self.usb_camera_port
+        # )
         self.n_stack_at_the_end = 0
         self.n_stack_at_start = 0
 
@@ -74,6 +77,12 @@ class RealTurretEnv(gym.Env):
 
         self.steps_without_target = 0
 
+    def update_target(self, movement: int = 0) -> Tuple[bool, np.ndarray, pd.Series]:
+        x_center_update = (2 * CM_IN_PIXELS) * movement
+        self.labels.xcenter = np.clip(
+            self.labels.xcenter + x_center_update, 0, self.image.shape[1]
+        )
+
     def step(self, action) -> tuple:
         # Decode action
         if action == 0:
@@ -88,6 +97,7 @@ class RealTurretEnv(gym.Env):
         self.servo.move_to(self.state[0])
         time.sleep(0.4)
         self.servo.stop()
+        self.update_target()
 
         if self.state[0] >= 11:
             self.n_stack_at_the_end += 1
@@ -99,49 +109,34 @@ class RealTurretEnv(gym.Env):
         else:
             self.n_stack_at_start = 0
 
-        reward = 0
-        done = False
+        self.steps_without_target = 0
+        is_target_out_bounds = (
+                (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
+                (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1)
+        )
+        if is_target_out_bounds:
+            print('salimos, debido a que el objetivo está fuera de los límites')
+            return self.state, -10, True, {}
 
-        self.image = get_image_from_camera(self.usb_camera, CameraType.USB, self.usb_camera_port)
-        result = self.model.predict(self.image)
-        self.labels = result.pandas().xywh[0]
-        self.labels = self.labels[self.labels['confidence'] > 0.60]
-        target_detected = not self.labels.empty
-        print(self.labels)
+        distance_calculations = DistanceCalculations.create_from(self.image, self.labels)
+        calculated_distances = distance_calculations.get_all_distances()
 
-        if target_detected:
-            self.steps_without_target = 0
-            is_target_out_bounds = (
-                    (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
-                    (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1)
-            )
-            if is_target_out_bounds:
-                print('salimos, debido a que el objetivo está fuera de los límites')
-                return self.state, -10, True, {}
+        # Simulate target detection and calculate the new offset
+        # Here, you would integrate with your computer vision system
+        # For this example, we simulate the target offset update
+        self.state[1] = self.calculate_offset(calculated_distances)
 
-            distance_calculations = DistanceCalculations.create_from(self.image, self.labels)
-            calculated_distances = distance_calculations.get_all_distances()
+        # Calculate reward
+        reward = self.calculate_reward()
 
-            # Simulate target detection and calculate the new offset
-            # Here, you would integrate with your computer vision system
-            # For this example, we simulate the target offset update
-            self.state[1] = self.calculate_offset(calculated_distances)
-
-            # Calculate reward
-            reward = self.calculate_reward()
-
-            # Check if the episode is done
-            done = self.is_target_centered(calculated_distances)
-        else:
-            self.steps_without_target += 1
+        # Check if the episode is done
+        done = self.is_target_centered(calculated_distances)
 
         return self.state, reward, done, {}
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        position = np.clip(randint(2, 12), 2, 12)
-        self.state = np.array([position, 0], dtype=np.float32)
-        self.servo.move_to(position)
+        self.state = np.array([2, 0], dtype=np.float32)
         time.sleep(1)
         self.steps_without_target = 0
         self.n_stack_at_start = 0
@@ -200,21 +195,12 @@ class RealTurretEnv(gym.Env):
         return center + right + center_target_x
 
     def render(self, mode='human'):
-        if self.image is None:
-            return True
-
-        if self.labels.empty:
-            cv2.imshow("image", deepcopy(self.image))
-            cv2.waitKey(1000)
-            cv2.destroyAllWindows()
-            return True
-
+        print(self.labels)
         DistanceCalculations.create_from(
             deepcopy(self.image), self.labels
         ).draw_lines_into_image(100)
 
         cv2.waitKey(500)
-        cv2.destroyAllWindows()
 
 
 def choose_action(model, state):
@@ -234,36 +220,53 @@ def choose_action(model, state):
 
 
 def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100):
+    cv2.startWindowThread()
+
     while True:
         state = env.reset()
         done = False
-        position = np.clip(randint(2, 12), 2, 12)
+        position = 2
         movement = 1
 
         while True:
-            image = get_image_from_camera(env.usb_camera, CameraType.USB, env.usb_camera_port)
+            image = get_image_from_camera(env.picamera, CameraType.CSI, env.usb_camera_port)
             result = env.model.predict(image)
             labels = result.pandas().xywh[0]
+            print(labels)
             labels = labels[labels['confidence'] > 0.60]
 
             if not labels.empty:
+                env.image = image
+                env.labels = labels.iloc[0]
+                env.state = [position, 0]
                 break
 
             env.servo.move_to(position)
-            time.sleep(0.4)
+            time.sleep(0.3)
             env.servo.stop()
 
-            position = np.clip(position + movement, 2, 12)
+            movement_multiplier = movement * randint(1, 3)
+            position = np.clip(
+                position + movement_multiplier,
+                2, 12
+            )
+            print(position, movement)
+
             if position >= 12 or position <= 2:
-                movement = -1
+                movement *= -1
 
         while not done:
             action = choose_action(policy_net, state)
             print('action', action)
             new_state, reward, done, _ = env.step(action)
-            # env.render()
+            env.render()
             print("-----------------------------------------------------")
             print(new_state, reward, done)
             print("-----------------------------------------------------")
 
             state = new_state
+
+
+if __name__ == '__main__':
+    env = RealTurretEnv()
+    train_policy_network(env, tf.keras.models.load_model("./model_binaries/policy_net_main2.h5"), None)
