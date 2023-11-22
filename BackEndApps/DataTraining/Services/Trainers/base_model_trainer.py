@@ -37,7 +37,7 @@ class Trainer(ABC):
     """
     model_uploader: ModelUploader
     message_collector: TrainMessageCollector = attr.ib(default=DummyTrainMessageCollector())
-    model_name: str = attr.ib(default='yolov5')
+    model_name: str = attr.ib(default='yolo')
 
     @abstractmethod
     def train(self) -> bool:

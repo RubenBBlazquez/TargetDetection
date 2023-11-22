@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 import cv2
 from django.core.management.base import BaseCommand

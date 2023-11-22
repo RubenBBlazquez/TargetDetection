@@ -50,17 +50,18 @@ class RealTurretEnv(gym.Env):
         super(RealTurretEnv, self).__init__()
         cv2.startWindowThread()
 
-        self.servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), 1, name='x1')
+        self.servo = None
         self.image = None
         self.labels = pd.Series()
         self.picamera = CustomPicamera()
         self.picamera.start()
         self.usb_camera_port = 0
         self.model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
+        self.model.predict(cv2.imread('BackEndApps/Predictions/ml_models/images_to_simulate/aaa.jpg'))
 
-        # self.usb_camera = cv2.VideoCapture(
-        #     self.usb_camera_port
-        # )
+        self.usb_camera = cv2.VideoCapture(
+            self.usb_camera_port
+        )
         self.n_stack_at_the_end = 0
         self.n_stack_at_start = 0
 
@@ -77,7 +78,7 @@ class RealTurretEnv(gym.Env):
 
         self.steps_without_target = 0
 
-    def update_target(self, movement: int = 0) -> Tuple[bool, np.ndarray, pd.Series]:
+    def update_target(self, movement: int = 0) -> None:
         x_center_update = (2 * CM_IN_PIXELS) * movement
         self.labels.xcenter = np.clip(
             self.labels.xcenter + x_center_update, 0, self.image.shape[1]
@@ -229,15 +230,26 @@ def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100
         movement = 1
 
         while True:
-            image = get_image_from_camera(env.picamera, CameraType.CSI, env.usb_camera_port)
-            result = env.model.predict(image)
-            labels = result.pandas().xywh[0]
-            print(labels)
-            labels = labels[labels['confidence'] > 0.60]
+            image = get_image_from_camera(env.usb_camera, CameraType.USB, env.usb_camera_port)
+            cv2.imshow("Camera", image)
+            cv2.waitKey(1)
 
-            if not labels.empty:
+            result = env.model.predict(image)
+            print(result.boxes)
+
+            if len(result) and result.boxes.conf[0] > 0.6:
+                xywh = result.boxes.xywh[0]
+                labels = pd.Series(
+                    {
+                        'xcenter': xywh[0],
+                        'ycenter': xywh[1],
+                        'width': xywh[2],
+                        'height': xywh[3],
+                        'confidence': result.boxes.conf[0],
+                    }
+                )
                 env.image = image
-                env.labels = labels.iloc[0]
+                env.labels = labels
                 env.state = [position, 0]
                 break
 

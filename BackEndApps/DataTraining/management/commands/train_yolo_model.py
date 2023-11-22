@@ -1,8 +1,12 @@
+import os
+
 from django.core.management import BaseCommand
 
+from BackEndApps.DataTraining.Services.Trainers.MessagesCollectors.yolo_train_message_collector import \
+    YoloTrainMessageCollector
 from BackEndApps.DataTraining.Services.Trainers.yolo_trainer import YoloTrainer
-from BackEndApps.DataTraining.Services.Uploaders.base_model_uploader import DummyModelUploader
-from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
+from BackEndApps.DataTraining.Services.Uploaders.local_model_uploader import LocalModelUploader
+from Core.settings import directory_separator as slash
 
 
 class Command(BaseCommand):
@@ -16,8 +20,13 @@ class Command(BaseCommand):
         epochs = options.get('epochs', 50)
         bach_size = options.get('batch_size', 15)
 
-        YoloTrainer(DummyModelUploader()).train(**{
-            'yolo_file_data': yolo_file_data,
-            'epochs': epochs,
-            'batch_size': bach_size
-        })
+        trainer = YoloTrainer(
+            LocalModelUploader(f'models{slash}'),
+            YoloTrainMessageCollector(),
+            **{
+                'yolo_file_data': yolo_file_data,
+                'epochs': epochs,
+                'batch_size': bach_size
+            }
+        )
+        trainer.train()
