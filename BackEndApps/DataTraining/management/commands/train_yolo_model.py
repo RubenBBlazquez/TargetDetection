@@ -11,16 +11,20 @@ from Core.settings import directory_separator as slash
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
-        parser.add_argument('--yolo_file_data', type=str, help='path to the directory to train the models')
-        parser.add_argument('--epochs', type=int, help='number of epochs to train the yolo model')
-        parser.add_argument('--bach_size', type=int, help='number of elements to train in groups each epoch')
-        parser.add_argument('--pretrained_model_path', type=str, help='path where the model weights are saved')
+        parser.add_argument('--yolo_file_data', type=str, help='path to the directory to train the models', default='')
+        parser.add_argument('--epochs', type=int, help='number of epochs to train the yolo model', default=50)
+        parser.add_argument(
+            '--bach_size', type=int, help='number of elements to train in groups each epoch', default=15
+        )
+        parser.add_argument(
+            '--pretrained_model_path', type=str, help='path where the model weights are saved', default='models/best.pt'
+        )
 
     def handle(self, *args, **options):
-        yolo_file_data = options.get('yolo_file_data', '')
-        epochs = options.get('epochs', 50)
-        bach_size = options.get('batch_size', 15)
-        pretrained_model_path = options.get('pretrained_model_path', 'models/best.pt')
+        yolo_file_data = options.get('yolo_file_data')
+        epochs = options.get('epochs')
+        bach_size = options.get('batch_size')
+        pretrained_model_path = options.get('pretrained_model_path')
 
         trainer = YoloTrainer(
             LocalModelUploader(new_path=f'models{slash}'),
