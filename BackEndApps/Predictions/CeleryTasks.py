@@ -1,9 +1,14 @@
 import json
+
+import cv2
 from celery import app
 import requests
+
+from BackEndApps.Predictions.ml_models.real_turret_env import get_image_from_camera, CameraType
 from Core.Celery.Celery import purge_specific_queue
 from datetime import datetime
-from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions
+from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions, \
+    RawData
 import logging
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
 import pickle
@@ -11,9 +16,67 @@ import os
 import numpy as np
 import pandas as pd
 from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
-from RaspberriModules.DataClasses.ServoModule import ServoMovement, ServoManagement
-from RaspberriModules.DataClasses.PowerModule import PowerModule
 import time
+
+
+def real_time_detection_with_celery():
+    """
+    This function is used to start the real time detection using celery tasks to predict targets and not predict in the
+    same thread as the camera.
+    """
+    # we import here to avoid errors when we are not execution on the raspberry pi
+    from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
+    from RaspberriModules.DataClasses.ServoModule import ServoMovement
+
+    picamera = CustomPicamera()
+    picamera.start()
+    frames = 0
+    angle = 1
+    gpin_horizontal_servo = int(os.getenv('X_SERVO_PIN'))
+    increment = 1
+    servo_movements = 0
+    cv2.startWindowThread()
+    servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
+
+    while True:
+        frames += 1
+        image = get_image_from_camera(picamera, CameraType.CSI)
+        cv2.imshow("CSI Camera", image)
+        cv2.waitKey(1)
+        is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
+
+        if frames < 15:
+            continue
+
+        if is_shoot_in_progress:
+            servo.stop()
+            continue
+
+        if angle < 0:
+            angle = 1
+
+        servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
+        servo.move_to(angle)
+        time.sleep(0.4)
+
+        servo_movements += 1
+        raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
+
+        check_prediction.apply_async(raw_data, queue='check_predictions', ignore_result=True, prority=1)
+
+        if servo_movements % 10 == 0:
+            increment = -increment
+
+        angle += increment
+        # we check if servo do all possible movements and clean unnecessary tasks
+        if servo_movements % 20 == 0:
+            print('purging tasks')
+            servo_movements = 0
+            purge_celery.apply_async(('check_predictions',), queue='purge_data', ignore_result=True, prority=1)
+
+        frames = 0
+
+    cv2.destroyAllWindows()
 
 @app.shared_task
 def purge_celery(*args):
@@ -155,11 +218,14 @@ def start_predictions_ok_actions(*args):
     if is_shoot_in_progress:
         return
 
+    # we import here to avoid errors when we are not execution on the raspberry pi
+    from RaspberriModules.DataClasses.ServoModule import ServoManagement, ServoMovement
+
     ServoManagement().servos = {}
     x_servo = ServoMovement(int(os.getenv('X_SERVO_PIN')), servo_position, name="x2")
     calculate_shoot_position(distance_calculations.get_all_distances(), x_servo)
 
-def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMovement):
+def calculate_shoot_position(calculated_distances: pd.Series, servo_x: "ServoMovement"):
     """
         This task is used to calculate the shot position (move servo to the correct position to shoot the target).
 
@@ -172,6 +238,9 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     # we create a tmp file to indicate that we are calculating the shoot position
     # and the real time prediction must be stopped
     open(tmp_file, 'w').close()
+
+    # we import here to avoid errors when we are not execution on the raspberry pi
+    from RaspberriModules.DataClasses.ServoModule import ServoMovement
 
     duty_cycle_per_cm = float(os.getenv('DUTY_CYCLE_PER_CM', 0.5))
     servo_duty_cycle_position = servo_x.position
@@ -246,6 +315,9 @@ def calculate_shoot_position(calculated_distances: pd.Series, servo_x: ServoMove
     os.remove(tmp_file)
 
 def shoot():
+    # we import here to avoid errors when we are not execution on the raspberry pi
+    from RaspberriModules.DataClasses.PowerModule import PowerModule
+
     laser = PowerModule(int(os.getenv('LASER_PIN', 0)))
     buzzer = PowerModule(int(os.getenv('BUZZER_PIN', 0)))
 

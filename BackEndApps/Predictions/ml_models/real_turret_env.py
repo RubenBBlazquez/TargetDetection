@@ -3,7 +3,7 @@ import os
 import time
 from enum import Enum
 from random import randint
-from typing import Any, Tuple
+from typing import Any
 
 import cv2
 import gym
@@ -14,8 +14,6 @@ import tensorflow as tf
 
 from BackEndApps.Predictions.services.DistanceCalculations import CM_IN_PIXELS, DistanceCalculations
 from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
-from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
-from RaspberriModules.DataClasses.ServoModule import ServoMovement
 
 
 class CameraType(Enum):
@@ -48,6 +46,10 @@ class RealTurretEnv(gym.Env):
 
     def __init__(self):
         super(RealTurretEnv, self).__init__()
+
+        # we import here to avoid errors when we are not execution on the raspberry pi
+        from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
+
         cv2.startWindowThread()
 
         self.servo = None
@@ -64,6 +66,8 @@ class RealTurretEnv(gym.Env):
         )
         self.n_stack_at_the_end = 0
         self.n_stack_at_start = 0
+
+        self.n_stay_actions = 0
 
         # Define action and observation space
         # Actions: Move left (-1), stay (0), move right (+1)
@@ -84,19 +88,22 @@ class RealTurretEnv(gym.Env):
             self.labels.xcenter + x_center_update, 0, self.image.shape[1]
         )
 
-    def step(self, action) -> tuple:
+    def step(self, action) -> Any:
         # Decode action
         if action == 0:
             movement = -1  # Move left
+            self.n_stay_actions = 0
         elif action == 1:
             movement = 1  # Move right
+            self.n_stay_actions = 0
         else:
+            self.n_stay_actions += 1
             movement = 0  # Stay
 
         # Update state: move the motor
         self.state[0] = np.clip(self.state[0] + movement, 2, 12)
         self.servo.move_to(self.state[0])
-        time.sleep(0.4)
+        time.sleep(0.3)
         self.servo.stop()
         self.update_target()
 
@@ -117,7 +124,7 @@ class RealTurretEnv(gym.Env):
         )
         if is_target_out_bounds:
             print('salimos, debido a que el objetivo está fuera de los límites')
-            return self.state, -10, True, {}
+            return self.state, True
 
         distance_calculations = DistanceCalculations.create_from(self.image, self.labels)
         calculated_distances = distance_calculations.get_all_distances()
@@ -127,13 +134,8 @@ class RealTurretEnv(gym.Env):
         # For this example, we simulate the target offset update
         self.state[1] = self.calculate_offset(calculated_distances)
 
-        # Calculate reward
-        reward = self.calculate_reward()
-
         # Check if the episode is done
-        done = self.is_target_centered(calculated_distances)
-
-        return self.state, reward, done, {}
+        return self.state, self.n_stay_actions >= 3
 
     def reset(self):
         # Reset the state of the environment to an initial state
@@ -142,44 +144,9 @@ class RealTurretEnv(gym.Env):
         self.steps_without_target = 0
         self.n_stack_at_start = 0
         self.n_stack_at_the_end = 0
+        self.n_stay_actions = 0
 
         return self.state
-
-    def calculate_reward(self):
-        offset = self.state[1]
-
-        reward = -abs(offset)  # Gradual penalty based on distance
-
-        if self.n_stack_at_start >= 4 or self.n_stack_at_the_end >= 4:
-            self.n_stack_at_start = 0
-            self.n_stack_at_the_end = 0
-            reward -= 20  # Adjusted penalty for staying at extremes
-        else:
-            # Small reward for moving away from extremes
-            reward += 2
-
-        if abs(offset) <= 1:
-            reward += 15  # Higher reward for centering the target
-        elif abs(offset) <= 3:
-            reward += 5  # Lower reward for being close
-
-        return reward
-
-    @staticmethod
-    def is_target_centered(calculated_distances: pd.Series):
-        left = calculated_distances.left
-        right = calculated_distances.right
-
-        # Define the condition for ending the episode
-        target_width = calculated_distances.width - (right + left)
-        center_target_x = target_width / 2
-        center_x_where_image_was_taken = (calculated_distances.width / 2) - 1
-
-        # we are using this formula to calculate if the target is centered:
-        # (center_image - 0.5 <= (right + center_target_x) <= center_image + 0.5)
-        # if we have the image (witdh = 100) and (left = 44.50) and (right = 45) and the target has 10 cm size
-        # so the formula to know if is centered is: 50 - 1 <= (45 + 5) <= 50 + 1 = true
-        return center_x_where_image_was_taken - 1 <= (right + center_target_x) <= center_x_where_image_was_taken + 1
 
     @staticmethod
     def calculate_offset(calculated_distances: pd.Series):
@@ -220,17 +187,30 @@ def choose_action(model, state):
     return action
 
 
-def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100):
+def start_model_detection(policy_net: tf.keras.Model) -> None:
+    """
+    Starts the model detection.
+
+    Parameters
+    ----------
+    policy_net : tf.keras.Model
+        The policy network model.
+
+    Returns
+    -------
+    None.
+    """
+    env_ = RealTurretEnv()
     cv2.startWindowThread()
 
     while True:
-        state = env.reset()
+        state = env_.reset()
         done = False
         position = 2
         movement = 1
 
         while True:
-            image = get_image_from_camera(env.usb_camera, CameraType.USB, env.usb_camera_port)
+            image = get_image_from_camera(env_.usb_camera, CameraType.USB, env_.usb_camera_port)
             cv2.imshow("Camera", image)
             cv2.waitKey(1)
 
@@ -248,14 +228,14 @@ def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100
                         'confidence': result.boxes.conf[0],
                     }
                 )
-                env.image = image
-                env.labels = labels
-                env.state = [position, 0]
+                env_.image = image
+                env_.labels = labels
+                env_.state = [position, 0]
                 break
 
-            env.servo.move_to(position)
+            env_.servo.move_to(position)
             time.sleep(0.3)
-            env.servo.stop()
+            env_.servo.stop()
 
             movement_multiplier = movement * randint(1, 3)
             position = np.clip(
@@ -270,15 +250,14 @@ def train_policy_network(env: RealTurretEnv, policy_net, optimizer, episodes=100
         while not done:
             action = choose_action(policy_net, state)
             print('action', action)
-            new_state, reward, done, _ = env.step(action)
-            env.render()
+            new_state = env_.step(action)
+            env_.render()
             print("-----------------------------------------------------")
-            print(new_state, reward, done)
+            print(new_state)
             print("-----------------------------------------------------")
 
             state = new_state
 
 
 if __name__ == '__main__':
-    env = RealTurretEnv()
-    train_policy_network(env, tf.keras.models.load_model("./model_binaries/policy_net_main2.h5"), None)
+    start_model_detection(tf.keras.models.load_model("./model_binaries/policy_net_main2.h5"))

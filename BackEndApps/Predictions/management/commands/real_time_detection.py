@@ -1,18 +1,10 @@
-import os
-
-import cv2
+import platform
 from django.core.management.base import BaseCommand
-
-from BackEndApps.Predictions.ml_models.real_turret_env import RealTurretEnv, train_policy_network, get_image_from_camera
-from BackEndApps.Predictions.models import RawData
-import pickle
-from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
-from RaspberriModules.DataClasses.ServoModule import ServoMovement, ServoManagement
-from BackEndApps.Predictions.CeleryTasks import check_prediction, purge_celery
-from datetime import datetime
-import time
+from BackEndApps.Predictions.ml_models.real_turret_env import start_model_detection
+from BackEndApps.Predictions.ml_models.simulate_turret_env.simulate_turret_env import train_policy_network, \
+    SimulateTurretEnv, RenderType
+from BackEndApps.Predictions.CeleryTasks import real_time_detection_with_celery
 from enum import Enum
-import numpy as np
 import tensorflow as tf
 
 
@@ -22,75 +14,55 @@ class CameraType(Enum):
 
 
 class Command(BaseCommand):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.usb_camera_port = 0
-        self.usb_camera = None
-
-    def detection_with_celery(self):
-        picamera = CustomPicamera()
-        picamera.start()
-        frames = 0
-        angle = 1
-        gpin_horizontal_servo = int(os.getenv('X_SERVO_PIN'))
-        increment = 1
-        servo_movements = 0
-        cv2.startWindowThread()
-        servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
-
-        while True:
-            frames += 1
-            image = get_image_from_camera(picamera,  CameraType.CSI)
-            cv2.imshow("CSI Camera", image)
-            cv2.waitKey(1)
-            is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
-
-            if frames < 15:
-                continue
-
-            if is_shoot_in_progress:
-                servo.stop()
-                continue
-
-            if angle < 0:
-                angle = 1
-
-            servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
-            servo.move_to(angle)
-            time.sleep(0.4)
-
-            servo_movements += 1
-            raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
-
-            check_prediction.apply_async(raw_data, queue='check_predictions', ignore_result=True, prority=1)
-
-            if servo_movements % 10 == 0:
-                increment = -increment
-
-            angle += increment
-            # we check if servo do all possible movements and clean unnecessary tasks
-            if servo_movements % 20 == 0:
-                print('purging tasks')
-                servo_movements = 0
-                purge_celery.apply_async(('check_predictions',), queue='purge_data', ignore_result=True, prority=1)
-
-            frames = 0
-
-        cv2.destroyAllWindows()
+    @staticmethod
+    def detection_with_celery():
+        real_time_detection_with_celery()
 
     @staticmethod
-    def detection_with_ml_model(simulate_training=False):
-        env = RealTurretEnv()
-        train_policy_network(env, tf.keras.models.load_model("BackEndApps/Predictions/ml_models/model_binaries/policy_net_main2.h5"), tf.optimizers.Adam(learning_rate=0.01))
+    def detection_with_ml_model(simulate_training=False, trained_model=''):
+        if simulate_training:
+            policy_net_def = tf.keras.Sequential(
+                [
+                    tf.keras.layers.Dense(
+                        10,
+                        activation="relu",
+                        input_shape=(SimulateTurretEnv().observation_space.shape[0],)
+                    ),
+                    tf.keras.layers.Dense(8, activation="relu", ),
+                    tf.keras.layers.Dense(3, activation="softmax"),
+                ]
+            )
+            train_policy_network(
+                policy_net_def,
+                tf.optimizers.Adam(learning_rate=0.01),
+                episodes=1000,
+                render_type=(
+                    RenderType.MATPLOTLIB
+                    if platform.system().lower() == 'linux'
+                    else RenderType.CV2
+                )
+            )
+            return
+
+        if not trained_model:
+            raise ValueError('No trained model was provided')
+
+        start_model_detection(
+            tf.keras.models.load_model(f"BackEndApps/Predictions/ml_models/model_binaries/{trained_model}")
+        )
 
     def add_arguments(self, parser):
-        parser.add_argument('--use-celery', type=bool, default=False, help='path to the directory to train the models')
+        parser.add_argument('--use_celery', type=bool, default=False, help='path to the directory to train the models')
+        parser.add_argument('--simulate_training', type=bool, default=False, help='boolean to simulate training or not')
+        parser.add_argument('--trained_model', type=str, default='', help='name of the trained model')
 
     def handle(self, *args, **options):
-        use_celery = options.get('use_celery', False)
+        use_celery = options.get('use_celery')
 
         if use_celery:
             self.detection_with_celery()
             return
 
-        self.detection_with_ml_model()
+        simulate_training = options.get('simulate_training')
+        trained_model = options.get('trained_model')
+        self.detection_with_ml_model(simulate_training, trained_model)

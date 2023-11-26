@@ -1,6 +1,7 @@
+import time
 from enum import Enum
 from typing import Tuple, List, NamedTuple
-
+import matplotlib.pyplot as plt
 import attr
 import cv2
 import numpy as np
@@ -259,7 +260,12 @@ class DistanceCalculations:
                    'height']
         )
 
-    def draw_lines_into_image(self, wait_time_window: int, lines: List[Line] = None) -> None:
+    def draw_lines_into_image(
+            self,
+            wait_time_window: int,
+            lines: List[Line] = None,
+            use_cv2 = True
+    ) -> np.array:
         """
         This method is used to draw lines into the image.
 
@@ -269,6 +275,8 @@ class DistanceCalculations:
             This parameter contains the time to wait to close the window.
         lines: List[Line]
             This parameter contains the lines to be drawn into the image.
+        use_cv2: bool
+            This parameter contains a boolean to use cv2 or use matplotlib to show images.
         """
 
         if lines is None:
@@ -295,6 +303,17 @@ class DistanceCalculations:
                 1,
                 cv2.LINE_AA
             )
+
+        if not use_cv2:
+            manager = plt.get_current_fig_manager()
+            manager.window.wm_geometry("+100+100")
+            plt.imshow(self.image)
+            plt.axis('off')
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+            plt.show(block=False)
+            plt.pause(wait_time_window/1000)
+            plt.close()
+            return self.image
 
         cv2.imshow('lines', self.image)
         cv2.waitKey(wait_time_window)

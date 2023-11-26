@@ -17,6 +17,11 @@ class CameraType(Enum):
     CSI = 'csi'
 
 
+class RenderType(Enum):
+    CV2 = 'cv2'
+    MATPLOTLIB = 'matplotlib'
+
+
 class SimulateTurretEnv(gym.Env):
     """
     Custom Environment that follows the OpenAI gym interface.
@@ -33,6 +38,7 @@ class SimulateTurretEnv(gym.Env):
         self.regenerate_target = True
         self.simulated_image = None
         self.simulated_labels = None
+        self.render_method = RenderType.CV2
 
         # Define action and observation space
         # Actions: Move left (-1), stay (0), move right (+1)
@@ -54,8 +60,7 @@ class SimulateTurretEnv(gym.Env):
 
             return True, self.simulated_image, self.simulated_labels
 
-        random_image = randint(1, 2)
-        image = cv2.imread(f'./images_to_simulate/image_{random_image}.jpg')
+        image = cv2.imread(f'BackEndApps/Predictions/ml_models/images_to_simulate/image_1.jpg')
 
         if type(image) != np.ndarray:
             return False, np.ndarray([]), pd.Series()
@@ -203,10 +208,7 @@ class SimulateTurretEnv(gym.Env):
 
         DistanceCalculations.create_from(
             deepcopy(self.simulated_image), self.simulated_labels
-        ).draw_lines_into_image(100)
-
-        cv2.waitKey(100)
-        cv2.destroyAllWindows()
+        ).draw_lines_into_image(100, None, False)
 
 
 def choose_action(model, state):
@@ -225,7 +227,7 @@ def choose_action(model, state):
     return action
 
 
-def discount_rewards(rewards, gamma=0.7):
+def discount_rewards(rewards, gamma=0.9):
     """
     Take 1D float array of rewards and compute discounted rewards.
     Args:
@@ -243,9 +245,30 @@ def discount_rewards(rewards, gamma=0.7):
     return discounted_rewards
 
 
-def train_policy_network(env: SimulateTurretEnv, policy_net, optimizer, episodes=100):
+def train_policy_network(
+        policy_net: tf.keras.Model,
+        optimizer: tf.keras.optimizers,
+        episodes=100,
+        render_type: RenderType = RenderType.CV2
+):
+    """
+    Trains the policy network.
+
+    Parameters
+    ----------
+    policy_net : tf.keras.Model
+        The policy network model.
+    optimizer : tf.keras.optimizers
+        The optimizer.
+    episodes : int, optional
+        The number of episodes to train, by default 100
+    render_type : RenderType, optional
+        The render type, by default RenderType.CV2
+    """
+    env_ = SimulateTurretEnv()
+
     for episode in range(episodes):
-        state = env.reset()
+        state = env_.reset()
         done = False
         episode_states, episode_actions, episode_rewards = [], [], []
 
@@ -253,8 +276,8 @@ def train_policy_network(env: SimulateTurretEnv, policy_net, optimizer, episodes
             action = choose_action(policy_net, state)
             print(f"Episode: {episode}, --- action, {action}")
 
-            new_state, reward, done, _ = env.step(action)
-            env.render()
+            new_state, reward, done, _ = env_.step(action)
+            env_.render()
 
             print("-----------------------------------------------------")
             print(new_state, reward, done)
@@ -287,11 +310,14 @@ def train_policy_network(env: SimulateTurretEnv, policy_net, optimizer, episodes
 
 if __name__ == '__main__':
     env = SimulateTurretEnv()
-    policy_net = tf.keras.Sequential(
+    policy_net_def = tf.keras.Sequential(
         [
             tf.keras.layers.Dense(10, activation="relu", input_shape=(env.observation_space.shape[0],)),
             tf.keras.layers.Dense(8, activation="relu", ),
             tf.keras.layers.Dense(3, activation="softmax"),
         ]
     )
-    train_policy_network(env, tf.keras.models.load_model('model_binaries/policy_net_main2.h5'), tf.optimizers.Adam(learning_rate=0.001))
+    train_policy_network(
+        tf.keras.models.load_model('../model_binaries/policy_net_main2.h5'),
+        tf.optimizers.Adam(learning_rate=0.001)
+    )

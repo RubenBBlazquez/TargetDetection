@@ -119,7 +119,7 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     line_to_left = distance_calculations.line_to_left_side
     lines = [line_to_up, line_to_left]
 
-    distance_calculations.draw_lines_into_image(lines)
+    distance_calculations.draw_lines_into_image(1, lines)
 
     expected_line_calls = [
         call(test_image, line_to_up.pt1, line_to_up.pt2, (255, 0, 0), 1),
@@ -133,6 +133,7 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
     coords_line_left = distance_calculations.calculate_coords_text_cm(line_to_left)
     font = cv2_mock.FONT_HERSHEY_SIMPLEX
     line_type = cv2_mock.LINE_AA
+
     expected_put_text_calls = [
         call(test_image, f'{distance_line_up} cm', coords_line_up, font, 0.5, (255, 0, 0), 1, line_type),
         call(test_image, f'{distance_line_left} cm', coords_line_left, font, 0.5, (255, 0, 0), 1, line_type),
@@ -146,7 +147,7 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
 @mark_different_images
 def test_draw_lines_showing_images(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    distance_calculations.draw_lines_into_image()
+    distance_calculations.draw_lines_into_image(1)
 
 @mark_different_images
 def test_get_all_distances(test_image, labels):
