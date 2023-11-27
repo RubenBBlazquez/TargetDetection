@@ -147,7 +147,7 @@ def test_draw_lines_into_image(cv2_mock: MagicMock, test_image, labels):
 @mark_different_images
 def test_draw_lines_showing_images(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
-    distance_calculations.draw_lines_into_image(1)
+    distance_calculations.draw_lines_into_image(10000)
 
 @mark_different_images
 def test_get_all_distances(test_image, labels):

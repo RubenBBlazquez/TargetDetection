@@ -214,7 +214,7 @@ def start_model_detection(policy_net: tf.keras.Model) -> None:
             cv2.imshow("Camera", image)
             cv2.waitKey(1)
 
-            result = env.model.predict(image)
+            result = env_.model.predict(image)
             print(result.boxes)
 
             if len(result) and result.boxes.conf[0] > 0.6:

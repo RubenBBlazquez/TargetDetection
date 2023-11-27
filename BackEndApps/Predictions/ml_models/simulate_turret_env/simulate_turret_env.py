@@ -192,15 +192,17 @@ class SimulateTurretEnv(gym.Env):
     def calculate_offset(calculated_distances: pd.Series):
         left = calculated_distances.left
         right = calculated_distances.right
+        from_left_to_center = calculated_distances.from_left_side_to_center
+        from_right_to_center = calculated_distances.from_right_side_to_center
 
-        center = (calculated_distances.width / 2) - 1
         target_width = calculated_distances.width - (right + left)
         center_target_x = target_width / 2
-
+        print(f"left: {left}, right: {right}, center_target_x: {center_target_x}")
+        print(f"from_left_to_center: {from_left_to_center}, from_right_to_center: {from_right_to_center}")
         if right > left:
-            return -(center + left + center_target_x)
+            return -(from_right_to_center + center_target_x)
 
-        return center + right + center_target_x
+        return from_left_to_center + center_target_x
 
     def render(self, mode='human'):
         if self.simulated_image is None:
