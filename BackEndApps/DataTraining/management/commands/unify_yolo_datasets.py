@@ -42,11 +42,12 @@ class Command(BaseCommand):
             images_1 = os.listdir(f'{image_directory_1}')
             images_2 = os.listdir(f'{image_directory_2}')
 
+            new_width, new_height = cv2.imread(f'{image_directory_1}{images_1[0]}').shape[:2]
+
             # information where we are going to copy the images and labels
             images = images_2 if copy_in == 1 else images_1
             image_directory = image_directory_2 if copy_in == 1 else image_directory_1
             label_directory = label_directory_2 if copy_in == 1 else label_directory_1
-            new_width, new_height = cv2.imread(f'{image_directory_1}{images[0]}').shape[:2]
 
             for image_file in images:
                 image = cv2.imread(f'{image_directory}{image_file}')
@@ -90,9 +91,9 @@ class Command(BaseCommand):
                     # center_y = int(float(scaled_labels[2]) * original_height)
                     # width = int(float(scaled_labels[3]) * original_width)
                     # height = int(float(scaled_labels[4]) * original_height)
-                    #
+                    # copy_image = image_resized.copy()
                     # cv2.rectangle(
-                    #     image_resized,
+                    #     copy_image,
                     #     (
                     #        int(center_x - width / 2),
                     #        int(center_y - height / 2)
@@ -104,7 +105,7 @@ class Command(BaseCommand):
                     #     (0, 255, 0),
                     #     2
                     # )
-                    # cv2.imshow('image', image_resized)
+                    # cv2.imshow('image', copy_image)
                     # cv2.waitKey(10000) & 0xFF == ord('q')
 
                 labels_file_io.close()

@@ -197,12 +197,12 @@ class SimulateTurretEnv(gym.Env):
 
         target_width = calculated_distances.width - (right + left)
         center_target_x = target_width / 2
-        print(f"left: {left}, right: {right}, center_target_x: {center_target_x}")
+        print(f"left: {left}, right: {right}, center_target_x: {center_target_x}, target_width: {target_width}, target_width: {calculated_distances.width}")
         print(f"from_left_to_center: {from_left_to_center}, from_right_to_center: {from_right_to_center}")
         if right > left:
-            return -(from_right_to_center + center_target_x)
+            return from_right_to_center
 
-        return from_left_to_center + center_target_x
+        return -from_left_to_center
 
     def render(self, mode='human'):
         if self.simulated_image is None:
