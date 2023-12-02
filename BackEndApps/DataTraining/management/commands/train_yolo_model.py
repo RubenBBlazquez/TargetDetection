@@ -14,7 +14,7 @@ class Command(BaseCommand):
         parser.add_argument('--yolo_file_data', type=str, help='path to the directory to train the models', default='')
         parser.add_argument('--epochs', type=int, help='number of epochs to train the yolo model', default=50)
         parser.add_argument(
-            '--bach_size', type=int, help='number of elements to train in groups each epoch', default=15
+            '--batch_size', type=int, help='number of elements to train in groups each epoch', default=15
         )
         parser.add_argument(
             '--pretrained_model_path', type=str, help='path where the model weights are saved', default='models/best.pt'
@@ -23,7 +23,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         yolo_file_data = options.get('yolo_file_data')
         epochs = options.get('epochs')
-        bach_size = options.get('batch_size')
+        batch_size = options.get('batch_size')
         pretrained_model_path = options.get('pretrained_model_path')
 
         trainer = YoloTrainer(
@@ -32,7 +32,7 @@ class Command(BaseCommand):
             **{
                 'yolo_file_data': yolo_file_data,
                 'epochs': epochs,
-                'batch_size': bach_size,
+                'batch_size': batch_size,
                 'pretrained_model_path': pretrained_model_path
             }
         )

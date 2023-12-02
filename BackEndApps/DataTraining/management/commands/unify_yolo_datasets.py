@@ -74,12 +74,13 @@ class Command(BaseCommand):
                     ratio_x = new_width / original_width
                     ratio_y = new_height / original_height
 
+                    # we scale the labels with the new size, just in case
                     scaled_labels = [
                         label,
-                        str(center_x * ratio_x),
-                        str(center_y * ratio_y),
-                        str(width * ratio_x),
-                        str(height * ratio_y)
+                        str((center_x * ratio_x * original_width) / new_width),
+                        str((center_y * ratio_y * original_width) / new_width),
+                        str((width * ratio_x * original_width) / new_width),
+                        str((height * ratio_y * original_width) / new_width)
                     ]
                     new_labels.append(' '.join(scaled_labels))
 
@@ -87,16 +88,16 @@ class Command(BaseCommand):
                     # we suppose that the labels have the same name as the images (in yolo is the same)
                     # we multiply by the original width and height because we want to unnormalize the labels
                     #
-                    # center_x = int(float(scaled_labels[1]) * original_width)
-                    # center_y = int(float(scaled_labels[2]) * original_height)
-                    # width = int(float(scaled_labels[3]) * original_width)
-                    # height = int(float(scaled_labels[4]) * original_height)
+                    # center_x = int(float(scaled_labels[1]) * new_width)
+                    # center_y = int(float(scaled_labels[2]) * new_width)
+                    # width = int(float(scaled_labels[3]) * new_width)
+                    # height = int(float(scaled_labels[4]) * new_width)
                     # copy_image = image_resized.copy()
                     # cv2.rectangle(
                     #     copy_image,
                     #     (
-                    #        int(center_x - width / 2),
-                    #        int(center_y - height / 2)
+                    #         int(center_x - width / 2),
+                    #         int(center_y - height / 2)
                     #     ),
                     #     (
                     #         int(center_x + width / 2),
