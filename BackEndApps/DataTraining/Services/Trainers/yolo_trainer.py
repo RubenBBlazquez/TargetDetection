@@ -47,7 +47,7 @@ class YoloTrainer(Trainer):
             is_training_finished = 'Results saved to' in line
             self.message_collector.collect_important_messages(line)
 
-        return process.poll() != 0 and not is_training_finished
+        return is_training_finished
 
     def train(self) -> bool:
         model_path = tempfile.mkdtemp()

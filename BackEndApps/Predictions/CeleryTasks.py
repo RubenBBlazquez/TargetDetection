@@ -1,16 +1,13 @@
 import json
 
-import cv2
 from celery import app
 import requests
 
-from BackEndApps.Predictions.ml_models.real_turret_env import get_image_from_camera, CameraType
 from Core.Celery.Celery import purge_specific_queue
 from datetime import datetime
-from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions, \
-    RawData
+from BackEndApps.Predictions.models import RawPredictionData, GoodPredictions, CleanPredictionData, AllPredictions
 import logging
-from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
+from Core.Services.TargetDetection.YoloV8TargetDetection import YoloV8TargetDetection
 import pickle
 import os
 import numpy as np
@@ -18,65 +15,6 @@ import pandas as pd
 from BackEndApps.Predictions.services.DistanceCalculations import DistanceCalculations
 import time
 
-
-def real_time_detection_with_celery():
-    """
-    This function is used to start the real time detection using celery tasks to predict targets and not predict in the
-    same thread as the camera.
-    """
-    # we import here to avoid errors when we are not execution on the raspberry pi
-    from RaspberriModules.DataClasses.CustomPicamera import CustomPicamera
-    from RaspberriModules.DataClasses.ServoModule import ServoMovement
-
-    picamera = CustomPicamera()
-    picamera.start()
-    frames = 0
-    angle = 1
-    gpin_horizontal_servo = int(os.getenv('X_SERVO_PIN'))
-    increment = 1
-    servo_movements = 0
-    cv2.startWindowThread()
-    servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
-
-    while True:
-        frames += 1
-        image = get_image_from_camera(picamera, CameraType.CSI)
-        cv2.imshow("CSI Camera", image)
-        cv2.waitKey(1)
-        is_shoot_in_progress = os.path.exists('RaspberriModules/assets/shoot_in_progress.tmp')
-
-        if frames < 15:
-            continue
-
-        if is_shoot_in_progress:
-            servo.stop()
-            continue
-
-        if angle < 0:
-            angle = 1
-
-        servo = ServoMovement(gpin_horizontal_servo, angle, name='x1')
-        servo.move_to(angle)
-        time.sleep(0.4)
-
-        servo_movements += 1
-        raw_data = RawData(image=pickle.dumps(image), servo_position=angle, date=datetime.now())
-
-        check_prediction.apply_async(raw_data, queue='check_predictions', ignore_result=True, prority=1)
-
-        if servo_movements % 10 == 0:
-            increment = -increment
-
-        angle += increment
-        # we check if servo do all possible movements and clean unnecessary tasks
-        if servo_movements % 20 == 0:
-            print('purging tasks')
-            servo_movements = 0
-            purge_celery.apply_async(('check_predictions',), queue='purge_data', ignore_result=True, prority=1)
-
-        frames = 0
-
-    cv2.destroyAllWindows()
 
 @app.shared_task
 def purge_celery(*args):
@@ -136,12 +74,8 @@ def check_prediction(*args):
 
         return
 
-    model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
-    result_prediction = model.predict(image)
-    labels = result_prediction.pandas().xywh[0]
-    predicted_labels = labels[labels['confidence'] > 0.60]
-    logging.info(f'Predicted Labels: \n {predicted_labels}')
-
+    model = YoloV8TargetDetection(os.getenv('YOLO_MODEL_NAME'))
+    predicted_labels = model.predict_and_filter_by_confidence(image, 0.6)
     prediction_object = AllPredictions(
         image=json.dumps(image.tolist()),
         prediction=int(len(predicted_labels) > 0),

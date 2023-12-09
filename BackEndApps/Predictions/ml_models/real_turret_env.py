@@ -13,7 +13,7 @@ import numpy as np
 import tensorflow as tf
 
 from BackEndApps.Predictions.services.DistanceCalculations import CM_IN_PIXELS, DistanceCalculations
-from Core.Services.TargetDetection.YoloTargetDetection import YoloTargetDetection
+from Core.Services.TargetDetection.YoloV8TargetDetection import YoloV8TargetDetection
 
 
 class CameraType(Enum):
@@ -58,7 +58,7 @@ class RealTurretEnv(gym.Env):
         self.picamera = CustomPicamera()
         self.picamera.start()
         self.usb_camera_port = 0
-        self.model = YoloTargetDetection(os.getenv('YOLO_MODEL_NAME'))
+        self.model = YoloV8TargetDetection(os.getenv('YOLO_MODEL_NAME'))
         self.model.predict(cv2.imread('BackEndApps/Predictions/ml_models/images_to_simulate/aaa.jpg'))
 
         self.usb_camera = cv2.VideoCapture(

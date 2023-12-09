@@ -1,12 +1,13 @@
 import platform
 from django.core.management.base import BaseCommand
+
+from BackEndApps.Predictions.management.commands.detection_methods.detection_with_celery import \
+    real_time_detection_with_celery
 from BackEndApps.Predictions.ml_models.real_turret_env import start_model_detection
 from BackEndApps.Predictions.ml_models.simulate_turret_env.simulate_turret_env import train_policy_network, \
     SimulateTurretEnv, RenderType
-from BackEndApps.Predictions.CeleryTasks import real_time_detection_with_celery
 from enum import Enum
 import tensorflow as tf
-
 
 class CameraType(Enum):
     USB = 'usb'
@@ -19,22 +20,25 @@ class Command(BaseCommand):
         real_time_detection_with_celery()
 
     @staticmethod
+    def detection_without_celery():
+        real_time_detection_with_celery()
+
+    @staticmethod
     def detection_with_ml_model(simulate_training=False, trained_model=''):
         if simulate_training:
             policy_net_def = tf.keras.Sequential(
                 [
                     tf.keras.layers.Dense(
-                        10,
+                        20,
                         activation="relu",
                         input_shape=(SimulateTurretEnv().observation_space.shape[0],)
                     ),
-                    tf.keras.layers.Dense(8, activation="relu", ),
                     tf.keras.layers.Dense(3, activation="softmax"),
                 ]
             )
             train_policy_network(
                 policy_net_def,
-                tf.optimizers.Adam(learning_rate=0.01),
+                tf.optimizers.Adam(),
                 episodes=1000,
                 render_type=(
                     RenderType.MATPLOTLIB
@@ -53,14 +57,20 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--use_celery', type=bool, default=False, help='path to the directory to train the models')
+        parser.add_argument('--use_ml_models', type=bool, default=False, help='boolean to use ml models or not')
         parser.add_argument('--simulate_training', type=bool, default=False, help='boolean to simulate training or not')
         parser.add_argument('--trained_model', type=str, default='', help='name of the trained model')
 
     def handle(self, *args, **options):
         use_celery = options.get('use_celery')
+        use_ml_models = options.get('use_ml_models')
 
-        if use_celery:
+        if use_celery and not use_ml_models:
             self.detection_with_celery()
+            return
+
+        if not use_ml_models:
+            self.detection_without_celery()
             return
 
         simulate_training = options.get('simulate_training')

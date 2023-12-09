@@ -1,5 +1,5 @@
 from enum import Enum
-from random import randint
+from random import random, randint
 from typing import Tuple
 from copy import deepcopy
 import cv2
@@ -39,6 +39,7 @@ class SimulateTurretEnv(gym.Env):
         self.simulated_image = None
         self.simulated_labels = None
         self.render_method = RenderType.CV2
+        self.last_offset = 0
 
         # Define action and observation space
         # Actions: Move left (-1), stay (0), move right (+1)
@@ -53,9 +54,10 @@ class SimulateTurretEnv(gym.Env):
 
     def simulate_information(self, movement: int = 0) -> Tuple[bool, np.ndarray, pd.Series]:
         if not self.regenerate_target:
-            x_center_update = (2 * CM_IN_PIXELS) * movement
+            x_center_update = CM_IN_PIXELS * movement
+            print(f"self.simulated_labels.xcenter: {self.simulated_labels.xcenter}")
             self.simulated_labels.xcenter = np.clip(
-                self.simulated_labels.xcenter + x_center_update, 0, self.simulated_image.shape[1]
+                self.simulated_labels.xcenter - x_center_update, 0, self.simulated_image.shape[1]
             )
 
             return True, self.simulated_image, self.simulated_labels
@@ -83,7 +85,6 @@ class SimulateTurretEnv(gym.Env):
         return True, image, self.simulated_labels
 
     def step(self, action) -> tuple:
-        # Decode action
         if action == 0:
             movement = -1  # Move left
         elif action == 1:
@@ -93,87 +94,119 @@ class SimulateTurretEnv(gym.Env):
 
         target_detected, image, labels = self.simulate_information(movement)
 
-        # Update state: move the motor
-        self.state[0] = np.clip(self.state[0] + movement, 1, 12)
-
-        if self.state[0] >= 11:
-            self.n_stack_at_the_end += 1
-        else:
-            self.n_stack_at_the_end = 0
-
-        if self.state[0] <= 2:
-            self.n_stack_at_start += 1
-        else:
-            self.n_stack_at_start = 0
-
-        if (
-                (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1) or
-                (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1)
-        ):
-            print('salimos, debido a que el objetivo está fuera de los límites')
-            return self.state, -10, True, {}
-
-        reward = 0
-        done = False
-
         if target_detected:
             self.steps_without_target = 0
             distance_calculations = DistanceCalculations.create_from(image, labels)
             calculated_distances = distance_calculations.get_all_distances()
 
-            # Simulate target detection and calculate the new offset
-            # Here, you would integrate with your computer vision system
-            # For this example, we simulate the target offset update
             self.state[1] = self.calculate_offset(calculated_distances)
+            self.state[0] = np.clip(self.state[0] + 0.5 * movement, 0.5, 12)
+
+            if self.state[0] >= 12:
+                self.n_stack_at_the_end += 1
+            else:
+                self.n_stack_at_the_end = 0
+
+            if self.state[0] <= 1:
+                self.n_stack_at_start += 1
+            else:
+                self.n_stack_at_start = 0
+
+            print('is_stack_at_the_end',labels.xcenter,self.state[0], labels.xcenter > image.shape[0] - 50)
+            print('is_stack_at_start',labels.xcenter,self.state[0], labels.xcenter < 50)
+            if (
+                    (self.n_stack_at_the_end >= 4 and self.state[0] == 12 and movement == 1 and labels.xcenter > image.shape[0] - 50) or
+                    (self.n_stack_at_start >= 4 and self.state[0] == 1 and movement == -1 and labels.xcenter < 50)
+            ):
+                print('salimos, debido a que el objetivo está fuera de los límites')
+                return self.state, 0, True
 
             # Calculate reward
-            reward = self.calculate_reward()
+            reward = self.calculate_reward(action)
+
+            print("1 -----------------------------------------------------")
+            print(self.state, reward, self.is_motor_going_to_the_right_direction(action))
+            print("-----------------------------------------------------")
+
+            self.last_offset = self.state[1]
 
             # Check if the episode is done
             done = self.is_target_centered(calculated_distances)
-        else:
-            self.steps_without_target += 1
 
+            return self.state, reward, done
+
+        self.steps_without_target += 1
         if self.steps_without_target >= 10:
             print('salimos, no encontramos target')
             self.steps_without_target = 0
-            return self.state, self.calculate_reward(), True, {}
-
-        return self.state, reward, done, {}
+            return self.state, 0, True
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        position = np.clip(randint(1, 10), 1, 12)
+        random_position = 0.5 * randint(1, 24)
+        position = np.clip(random_position, 0.5, 12)
         self.state = np.array([position, 0], dtype=np.float32)
         self.steps_without_target = 0
         self.n_stack_at_start = 0
         self.n_stack_at_the_end = 0
         self.regenerate_target = True
+        self.last_offset = None
 
         return self.state
 
-    def calculate_reward(self):
+    def is_motor_going_to_the_right_direction(self, action: int) -> bool:
+        """
+        This method is used to know if the motor is going to the right direction
+
+        Parameters
+        ----------
+        action : int
+            This is the action that the motor is going to do.
+        """
+        if not self.last_offset:
+            return True
+
+        return abs(self.state[1]) < abs(self.last_offset)
+
+    def calculate_reward(self, action: int):
+        """
+        Calculates the reward for the current step.
+
+        Parameters
+        ----------
+        action : int
+            This is the action that the motor is going to do.
+        """
         offset = self.state[1]
 
         reward = -abs(offset)  # Gradual penalty based on distance
 
-        if self.n_stack_at_start >= 4 or self.n_stack_at_the_end >= 4:
-            self.n_stack_at_start = 0
-            self.n_stack_at_the_end = 0
-            reward -= 20  # Adjusted penalty for staying at extremes
-        else:
-            # Small reward for moving away from extremes
-            reward += 2
+        if self.n_stack_at_the_end >= 4 or self.n_stack_at_start >= 4:
+            reward -= 20
+
+        # Extra penalty for moving in the wrong direction
+        if not self.is_motor_going_to_the_right_direction(action):
+            offset_difference = abs(self.last_offset) - abs(offset)
+            print(f"offset_difference: {offset_difference} offset: {self.state[1]} last_offset: {self.last_offset}")
+            reward -= abs(offset_difference * 3)
 
         if abs(offset) <= 1:
-            reward += 15  # Higher reward for centering the target
+            reward += 10  # Higher reward for centering the target
         elif abs(offset) <= 3:
-            reward += 5  # Lower reward for being close
+            reward += 3  # Lower reward for being close
 
         return reward
 
     @staticmethod
     def is_target_centered(calculated_distances: pd.Series):
+        """
+        This method is used to know if the target is centered
+
+        Parameters
+        ----------
+        calculated_distances : pd.Series
+            This is the calculated distances of the target.
+        """
         left = calculated_distances.left
         right = calculated_distances.right
 
@@ -190,27 +223,42 @@ class SimulateTurretEnv(gym.Env):
 
     @staticmethod
     def calculate_offset(calculated_distances: pd.Series):
+        """
+        This method is used to calculate the offset of the target
+
+        Parameters
+        ----------
+        calculated_distances : pd.Series
+            This is the calculated distances of the target.
+        """
         left = calculated_distances.left
         right = calculated_distances.right
-        from_left_to_center = calculated_distances.from_left_side_to_center
-        from_right_to_center = calculated_distances.from_right_side_to_center
+        from_x_center_to_center_image = calculated_distances.from_x_center_to_center_image
 
-        target_width = calculated_distances.width - (right + left)
-        center_target_x = target_width / 2
-        print(f"left: {left}, right: {right}, center_target_x: {center_target_x}, target_width: {target_width}, target_width: {calculated_distances.width}")
-        print(f"from_left_to_center: {from_left_to_center}, from_right_to_center: {from_right_to_center}")
         if right > left:
-            return from_right_to_center
+            return from_x_center_to_center_image
 
-        return -from_left_to_center
+        return -from_x_center_to_center_image
 
     def render(self, mode='human'):
+        """
+        This method is used to render the image
+
+        Parameters
+        ----------
+        mode : str, optional
+            This is the mode that we want to use to render the image, by default 'human'
+        """
         if self.simulated_image is None:
             return
 
         DistanceCalculations.create_from(
             deepcopy(self.simulated_image), self.simulated_labels
-        ).draw_lines_into_image(100, None, False)
+        ).draw_lines_into_image(
+            100,
+            None,
+            self.render_method == RenderType.CV2
+        )
 
 
 def choose_action(model, state):
@@ -278,12 +326,8 @@ def train_policy_network(
             action = choose_action(policy_net, state)
             print(f"Episode: {episode}, --- action, {action}")
 
-            new_state, reward, done, _ = env_.step(action)
+            new_state, reward, done = env_.step(action)
             env_.render()
-
-            print("-----------------------------------------------------")
-            print(new_state, reward, done)
-            print("-----------------------------------------------------")
 
             episode_states.append(state)
             episode_actions.append(action)
@@ -305,7 +349,7 @@ def train_policy_network(
 
         gradients = tape.gradient(loss, policy_net.trainable_variables)
         optimizer.apply_gradients(zip(gradients, policy_net.trainable_variables))
-        policy_net.save('./model_binaries/policy_net.h5')
+        policy_net.save('BackendApps/Predictions/ml_models/model_binaries/policy_net.h5')
 
         print(f"Episode: {episode}, Loss: {loss.numpy()}")
 

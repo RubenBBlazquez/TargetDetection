@@ -92,15 +92,17 @@ def test_calculate_bottom_distance(test_image, labels):
 
     assert result_cm == expected_cm
 
+
 @mark_different_images
 def test_calculate_max_width_distance(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
     line_to_max_width = distance_calculations.line_to_max_width
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_max_width)
-    expected_cm = round(test_image.shape[1]/CM_IN_PIXELS, 3)
+    expected_cm = round(test_image.shape[1] / CM_IN_PIXELS, 3)
 
     assert result_cm == expected_cm
+
 
 @mark_different_images
 def test_calculate_max_height_distance(test_image, labels):
@@ -108,8 +110,9 @@ def test_calculate_max_height_distance(test_image, labels):
     line_to_max_height = distance_calculations.line_to_max_height
 
     result_cm = distance_calculations.get_distance_in_cm(line_to_max_height)
-    expected_cm = round(test_image.shape[0]/CM_IN_PIXELS, 3)
+    expected_cm = round(test_image.shape[0] / CM_IN_PIXELS, 3)
     assert result_cm == expected_cm
+
 
 @mark_different_images
 @unittest.mock.patch('BackEndApps.Predictions.services.DistanceCalculations.cv2')
@@ -149,12 +152,17 @@ def test_draw_lines_showing_images(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
     distance_calculations.draw_lines_into_image(10000)
 
+
 @mark_different_images
 def test_get_all_distances(test_image, labels):
     distance_calculations = DistanceCalculations.create_from(test_image, labels)
     distances = distance_calculations.get_all_distances()
 
-    assert list(distances.index) == ['left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center', 'width', 'height']
+    assert list(distances.index) == [
+        'left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center',
+        "from_right_side_to_center", "from_left_side_to_center",
+        "from_x_center_to_center_image", 'width', 'height'
+    ]
 
 
 @pytest.mark.skip(reason='This test is only for manual testing')

@@ -79,6 +79,8 @@ class DistanceCalculations:
     y0: int
     x1: int
     y1: int
+    target_width: int
+    target_height: int
 
     @classmethod
     def create_from(cls, image: np.array, labels: pd.Series):
@@ -97,7 +99,7 @@ class DistanceCalculations:
         x1 = labels.xcenter + labels.width / 2
         y1 = labels.ycenter + labels.height / 2
 
-        return cls(image, int(x0), int(y0), int(x1), int(y1))
+        return cls(image, int(x0), int(y0), int(x1), int(y1), int(labels.width), int(labels.width))
 
     def get_distance_in_cm(self, line: Line) -> float:
         """
@@ -204,13 +206,26 @@ class DistanceCalculations:
         """
             This method is used to calculate the distance from the right target side to center.
         """
-        return Line(
+        return (Line(
             Point(int(self.x0), int(self.y0)),
             Point(int(self.image.shape[1] / 2), int(self.y0)),
             axis=0,
             side=CoordsSide.LEFT,
             color=(0, 0, 0)
-        )
+        ))
+
+    @property
+    def line_from_x_center_to_center_image(self) -> Line:
+        """
+            This method is used to calculate the distance from the right target side to center.
+        """
+        return (Line(
+            Point(int(self.x0 + self.target_width / 2), int(self.y0)),
+            Point(int(self.image.shape[1] / 2), int(self.y0)),
+            axis=0,
+            side=CoordsSide.LEFT,
+            color=(0, 0, 0)
+        ))
 
     @property
     def line_to_right_side(self) -> Line:
@@ -274,6 +289,7 @@ class DistanceCalculations:
             self.line_from_bottom_side_to_center,
             self.line_from_right_side_to_center,
             self.line_from_left_side_to_center,
+            self.line_from_x_center_to_center_image,
             self.line_to_max_width,
             self.line_to_max_height,
         ]
@@ -284,15 +300,18 @@ class DistanceCalculations:
         """
         return pd.Series(
             [self.get_distance_in_cm(line) for line in self.get_all_lines()],
-            index=['left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center',
-                   "from_right_side_to_center", "from_left_side_to_center", 'width', 'height']
+            index=[
+                'left', 'top', 'right', 'bottom', 'from_top_side_to_center', 'from_bottom_side_to_center',
+                "from_right_side_to_center", "from_left_side_to_center",
+                "from_x_center_to_center_image", 'width', 'height'
+            ]
         )
 
     def draw_lines_into_image(
             self,
             wait_time_window: int,
             lines: List[Line] = None,
-            use_cv2 = True
+            use_cv2=True
     ) -> np.array:
         """
         This method is used to draw lines into the image.
@@ -339,7 +358,7 @@ class DistanceCalculations:
             plt.axis('off')
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
             plt.show(block=False)
-            plt.pause(wait_time_window/1000)
+            plt.pause(wait_time_window / 1000)
             plt.close()
             return self.image
 
