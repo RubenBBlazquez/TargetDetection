@@ -9,6 +9,16 @@ from ultralytics import YOLO
 from ultralytics.engine.results import Results
 
 class YoloV8TargetDetection(DetectionMethods):
+    """
+    This class is used to detect the targets using YoloV8.
+
+    Attributes
+    ----------
+    model: YOLO
+        This is the YOLO model.
+    models_path: str
+        This is the path to the models.
+    """
     models_path = os.path.abspath(os.getcwd()) + f'{slash}models{slash}'
 
     def __init__(self, model_name, models_path = ''):
