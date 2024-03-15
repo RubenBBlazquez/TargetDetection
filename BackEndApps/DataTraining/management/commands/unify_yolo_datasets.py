@@ -21,6 +21,7 @@ class Command(BaseCommand):
         dataset_1 = options.get('dataset_1')
         dataset_2 = options.get('dataset_2')
         copy_in = options.get('copy_in')
+
         print(dataset_1, dataset_2, copy_in)
         dataset_1 = '/'.join(dataset_1.split('/')[-1]) if dataset_1.endswith('/') else dataset_1
         dataset_2 = '/'.join(dataset_2.split('/')[-1]) if dataset_2.endswith('/') else dataset_2
@@ -76,7 +77,7 @@ class Command(BaseCommand):
 
                     # we scale the labels with the new size, just in case
                     scaled_labels = [
-                        label,
+                        "0",
                         str((center_x * ratio_x * original_width) / new_width),
                         str((center_y * ratio_y * original_width) / new_width),
                         str((width * ratio_x * original_width) / new_width),
@@ -112,9 +113,17 @@ class Command(BaseCommand):
                 labels_file_io.close()
 
                 if copy_in == 1:
-                    labels_file_io = open(f'{label_directory_1}{labels_file}', 'w+')
+                    normalized_file_name = (
+                        labels_file.replace('.txt', '')
+                        .replace('.', '_')
+                        .replace(',', '_')
+                        .replace(' ', '_')
+                    )
+                    norm_labels_file = normalized_file_name + ".txt"
+                    norm_image_file = normalized_file_name + f".{image_file.split('.')[-1]}"
+                    labels_file_io = open(f'{label_directory_1}{norm_labels_file}', 'w+')
                     labels_file_io.write('\n'.join(new_labels))
-                    cv2.imwrite(f'{image_directory_1}{image_file}', image_resized)
+                    cv2.imwrite(f'{image_directory_1}{norm_image_file}', image_resized)
                     labels_file_io.close()
                     continue
 
